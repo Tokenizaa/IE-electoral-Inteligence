@@ -253,6 +253,7 @@ export class DataService {
       partido: analysis.candidate.sg_partido,
       cargo: analysis.candidate.ds_cargo,
       eleicao: analysis.id_eleicao,
+      cobertura: 'Amostra parcial de municípios do RS em 2022; não representa votação estadual completa.',
       total_votos_amostra: analysis.total_votos_amostra,
       hhi: analysis.hhi_concentracao,
       classificacao_espacial: analysis.classificacao_espacial,
@@ -306,7 +307,7 @@ REGRAS RÍGIDAS ANTI-ALUCINAÇÃO (INVIOLÁVEIS):
 2. Não invente nenhum número, candidato, partido, percentual ou município.
 3. Não faça afirmações de causalidade (ex: não diga que gastos, idade ou religião causaram votos).
 4. Não infira intenção ou voto individual de eleitores (falácia ecológica).
-5. Se uma informação não estiver presente, declare expressamente que o dado não está disponível.
+5. Se uma informação não estiver presente, declare expressamente que o dado não está disponível.\n6. Os números pertencem a uma amostra municipal parcial do RS em 2022, não ao total estadual. Não afirme eleição, cadeira, quociente, elegibilidade, tendência ou dependência estadual com base nesta amostra.
 
 EVIDÊNCIAS ESTRUTURADAS:
 ${JSON.stringify(evidenceBundle, null, 2)}
@@ -354,7 +355,7 @@ Responda em formato JSON estrito com as seguintes chaves:
           'Correlação espacial observada não constitui prova de causalidade sociológica.',
           'Números conferidos matematicamente pelo motor analítico da Fase 2.'
         ],
-        conclusao_proporcional: parsedText.conclusao_proporcional || `A base eleitoral demonstra forte concentração territorial no município de ${analysis.maior_reduto_nome}.`,
+        conclusao_proporcional: parsedText.conclusao_proporcional || `Na amostra parcial disponível, os votos observados têm maior volume em ${analysis.maior_reduto_nome}; isso não permite concluir concentração da votação estadual completa.`,
         provencancia_arquivos: [
           'votacao_candidato_munzona_2022_RS_sample.csv',
           'consulta_cand_2022_RS_sample.csv',

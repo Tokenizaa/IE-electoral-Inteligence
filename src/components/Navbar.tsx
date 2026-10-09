@@ -12,10 +12,11 @@ import {
   GitCompare,
   FileSpreadsheet,
   BookOpen,
+  Database,
   CheckCircle2
 } from 'lucide-react';
 
-export type TabType = 'overview' | 'investigation' | 'territory' | 'comparisons' | 'reports' | 'docs';
+export type TabType = 'overview' | 'investigation' | 'territory' | 'comparisons' | 'reports' | 'sources' | 'docs';
 
 interface NavbarProps {
   activeTab: TabType;
@@ -33,6 +34,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, statusI
     { id: 'territory', label: 'Análise Territorial & Mapa', icon: MapPin },
     { id: 'comparisons', label: 'Comparações & Regras', icon: GitCompare },
     { id: 'reports', label: 'Relatórios & IA', icon: FileSpreadsheet },
+    { id: 'sources', label: 'Fontes TSE', icon: Database },
     { id: 'docs', label: 'Cadernos Canônicos', icon: BookOpen },
   ];
 
@@ -48,7 +50,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, statusI
         </div>
         <div className="flex items-center gap-2 text-slate-400 font-mono text-[11px]">
           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 inline" />
-          <span className="text-emerald-400">Motores Fases 1 & 2 Validados</span>
+          <span className="text-amber-300">Validação metodológica em andamento</span>
           <span className="text-slate-600">•</span>
           <span>{statusInfo.engine}</span>
         </div>
@@ -66,7 +68,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, statusI
             <div className="flex items-center gap-2">
               <span className="text-base font-bold text-white tracking-tight">Inteligência Eleitoral</span>
               <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
-                Fase 3: Operacional
+                Fase 3: Em validação
               </span>
             </div>
             <p className="text-[11px] text-slate-400">

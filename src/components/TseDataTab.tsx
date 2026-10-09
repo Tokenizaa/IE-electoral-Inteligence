@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Download, ExternalLink, LoaderCircle, RefreshCw, Search } from 'lucide-react';
 import type { TseCatalogResource, TseCatalogResult, TseResourceKind, TseDownloadManifest, TseDownloadedInspection } from '../ingestion/tseOpenData.ts';
+import type { TseLayoutValidation } from '../ingestion/tseLayoutRegistry.ts';
 
 const kinds: Array<{ value: '' | TseResourceKind; label: string }> = [
   { value: '', label: 'Todos os tipos de recurso' },
@@ -33,7 +34,9 @@ export const TseDataTab: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [downloads, setDownloads] = useState<Record<string, TseDownloadManifest>>({});
   const [inspections, setInspections] = useState<Record<string, TseDownloadedInspection>>({});
+  const [layoutValidations, setLayoutValidations] = useState<Record<string, TseLayoutValidation>>({});
   const [inspectingId, setInspectingId] = useState<string | null>(null);
+  const [validatingId, setValidatingId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [searchText, setSearchText] = useState('');
 
@@ -102,6 +105,25 @@ export const TseDataTab: React.FC = () => {
       setError(err instanceof Error ? err.message : 'Falha ao inspecionar cargos.');
     } finally {
       setInspectingId(null);
+    }
+  };
+
+  const validateLayout = async (resource: TseCatalogResource) => {
+    setValidatingId(resource.id);
+    setError(null);
+    try {
+      const response = await fetch('/api/tse/validate-layout', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ resource_id: resource.id, year: Number(year) })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error ?? 'Não foi possível validar o layout do arquivo.');
+      setLayoutValidations(previous => ({ ...previous, [resource.id]: payload as TseLayoutValidation }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Falha ao validar o layout do arquivo.');
+    } finally {
+      setValidatingId(null);
     }
   };
 
@@ -200,6 +222,22 @@ export const TseDataTab: React.FC = () => {
                           {inspectingId === resource.id ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
                           {inspectingId === resource.id ? 'Inspecionando arquivo...' : 'Identificar cargos presentes'}
                         </button>
+                      )}
+                      {manifest.local_file.toLowerCase().endsWith('.csv') && (
+                        <button onClick={() => void validateLayout(resource)} disabled={validatingId !== null} className="mt-3 ml-2 inline-flex items-center gap-2 rounded-md border border-slate-700 px-3 py-2 text-slate-200 hover:bg-slate-800 disabled:opacity-50">
+                          {validatingId === resource.id ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                          {validatingId === resource.id ? 'Validando layout...' : 'Validar layout'}
+                        </button>
+                      )}
+                      {layoutValidations[resource.id] && (
+                        <div className="mt-3 border-t border-slate-700 pt-3">
+                          <p className="font-semibold text-slate-200">Layout: {layoutValidations[resource.id].status}</p>
+                          <p className="mt-1 break-all text-slate-400">Fingerprint SHA-256: <span className="font-mono text-slate-300">{layoutValidations[resource.id].header_fingerprint_sha256}</span></p>
+                          {layoutValidations[resource.id].missing_required_columns.length > 0 && (
+                            <p className="mt-1 text-amber-200">Colunas obrigatórias ausentes: {layoutValidations[resource.id].missing_required_columns.join(', ')}</p>
+                          )}
+                          <p className="mt-1 text-amber-200">Ingestão analítica autorizada: não. A assinatura disponível deriva de amostra RS/2022 e exige validação adicional.</p>
+                        </div>
                       )}
                       {inspections[resource.id] && (
                         <div className="mt-3 border-t border-slate-700 pt-3">

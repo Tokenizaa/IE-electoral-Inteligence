@@ -104,7 +104,7 @@ Após a interrupção do agente por limite de cota, foi feita revisão direta do
 Foi implementada uma primeira camada reutilizável de aquisição de fontes, sem fixar a plataforma em um único ano ou arquivo:
 
 - `src/ingestion/tseOpenData.ts` consulta a API CKAN do Portal de Dados Abertos do TSE em tempo de execução, pesquisa por ano e classifica recursos pelo nome/descrição publicados.
-- A aba **Fontes TSE** permite selecionar ano, tipo de arquivo, filtrar resultados e iniciar o download de um recurso do catálogo.
+- A aba **Fontes TSE** permite selecionar ano, tipo de arquivo, filtrar resultados e iniciar o download de um recurso do catálogo. Depois do download de um CSV, a interface também pode percorrer o arquivo em streaming e listar os códigos `CD_CARGO` e descrições `DS_CARGO` observados, com contagem de registros por código.
 - `GET /api/tse/catalog?year=2022` lista recursos; `POST /api/tse/download` recebe o identificador do recurso do CKAN e o ano selecionado. A API não aceita uma URL arbitrária fornecida pelo cliente.
 - Os downloads são guardados em `var/tse-downloads/<ano>/`, ignorados pelo Git, com manifesto JSON contendo URL oficial, metadados, tamanho e SHA-256.
 - Há limite de tamanho configurável (2 GiB por padrão), verificação do host oficial HTTPS em cada redirecionamento, bloqueio de HTML/JSON de erro disfarçado de CSV e validação inicial da assinatura ZIP/cabeçalho tabular.

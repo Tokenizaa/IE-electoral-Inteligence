@@ -67,6 +67,13 @@ async function run() {
     const savedManifest = JSON.parse(await readFile(`${manifest.local_file}.manifest.json`, 'utf8'));
     assert.equal(savedManifest.sha256, manifest.sha256);
 
+    const inspection = await client.inspectDownloadedResource(resourceId, 2022);
+    assert.equal(inspection.total_registros, 3);
+    assert.deepEqual(inspection.cargos.map(item => item.cd_cargo), ['1', '7']);
+    assert.equal(inspection.cargos.find(item => item.cd_cargo === '7')?.registros_observados, 2);
+    assert.equal(inspection.cargos.find(item => item.cd_cargo === '1')?.ds_cargo, 'PRESIDENTE');
+    assert.match(inspection.validation_status, /LAYOUT_AINDA_REQUER_VALIDACAO/);
+
     await assert.rejects(() => client.downloadResource(resourceId, 2024), /não foi identificado como eleição de 2024/);
 
     const unsafeFetch: typeof fetch = async (input) => {

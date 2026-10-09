@@ -7,6 +7,7 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { DataService } from './src/services/dataService.ts';
+import { TseOpenDataClient, type TseResourceKind } from './src/ingestion/tseOpenData.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,6 +20,7 @@ async function startServer() {
   console.log('[Server] Inicializando banco de dados analítico...');
   const dataService = DataService.getInstance();
   await dataService.ensureDataLoaded();
+  const tseOpenData = new TseOpenDataClient();
   console.log('[Server] Banco de dados e tabelas analíticas prontas.');
 
   // Health and Status
@@ -29,6 +31,50 @@ async function startServer() {
       cobertura: 'Amostra parcial do RS, eleições gerais de 2022; cobertura estadual/nacional completa não validada.',
       metodologia: 'Resultados sujeitos às limitações documentadas da amostra.'
     });
+  });
+
+  // Dynamic catalog of official TSE open-data resources by election year.
+  app.get('/api/tse/catalog', async (req, res) => {
+    const year = Number.parseInt(String(req.query.year ?? ''), 10);
+    if (!Number.isInteger(year)) {
+      return res.status(400).json({ error: 'Informe o ano eleitoral em ?year=2022.' });
+    }
+    const kindValue = req.query.kind ? String(req.query.kind) : undefined;
+    const allowedKinds: TseResourceKind[] = [
+      'CANDIDATURAS',
+      'VOTACAO_NOMINAL_MUNICIPIO_ZONA',
+      'VOTACAO_PARTIDO_MUNICIPIO_ZONA',
+      'DETALHE_APURACAO_MUNICIPIO_ZONA',
+      'DETALHE_APURACAO_SECAO',
+      'BOLETIM_URNA',
+      'OUTRO'
+    ];
+    if (kindValue && !allowedKinds.includes(kindValue as TseResourceKind)) {
+      return res.status(400).json({ error: 'Tipo de recurso TSE inválido.', allowedKinds });
+    }
+    try {
+      res.setHeader('Cache-Control', 'no-store');
+      res.json(await tseOpenData.search(year, kindValue as TseResourceKind | undefined));
+    } catch (err: any) {
+      res.status(502).json({ error: err.message, source: 'Portal de Dados Abertos do TSE' });
+    }
+  });
+
+  // Download a resource selected from the live catalog; never accepts arbitrary URLs.
+  app.post('/api/tse/download', async (req, res) => {
+    const resourceId = String(req.body?.resource_id ?? '');
+    const year = Number.parseInt(String(req.body?.year ?? ''), 10);
+    if (!resourceId || !Number.isInteger(year)) {
+      return res.status(400).json({ error: 'Informe resource_id e year do catálogo do TSE.' });
+    }
+    try {
+      const manifest = await tseOpenData.downloadResource(resourceId, year);
+      res.status(201).json(manifest);
+    } catch (err: any) {
+      const message = String(err?.message ?? 'Falha no download do recurso TSE.');
+      const status = /inválido|não foi identificado|não possui URL|não foi confirmado/i.test(message) ? 400 : 502;
+      res.status(status).json({ error: message, source: 'Portal de Dados Abertos do TSE' });
+    }
   });
 
   // Elections Catalog

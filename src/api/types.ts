@@ -35,7 +35,7 @@ export interface CandidateMunicipalResult {
   nm_municipio: string;
   nm_regiao: string;
   qt_votos_nominais: number;
-  pct_sobre_validos_mun: number;
+  pct_sobre_registros_amostra_mun: number;
   pct_sobre_votos_candidato: number;
   ranking_no_municipio: number;
 }

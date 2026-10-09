@@ -104,7 +104,7 @@ export class DataService {
 
     const munRows = await this.db.query<any>(
       `SELECT m.cd_ibge, m.cd_tse, mun.nm_municipio, mun.nm_regiao,
-              m.qt_votos_nominais, m.pct_sobre_validos_mun,
+              m.qt_votos_nominais, m.pct_sobre_registros_amostra_mun,
               m.pct_sobre_votos_candidato, m.ranking_no_municipio
        FROM mart_votacao_candidato_mun m
        JOIN dim_municipio_tse_ibge mun ON m.cd_ibge = mun.cd_ibge
@@ -119,7 +119,7 @@ export class DataService {
       nm_municipio: r.nm_municipio,
       nm_regiao: r.nm_regiao,
       qt_votos_nominais: Number(r.qt_votos_nominais),
-      pct_sobre_validos_mun: Number(r.pct_sobre_validos_mun),
+      pct_sobre_registros_amostra_mun: Number(r.pct_sobre_registros_amostra_mun),
       pct_sobre_votos_candidato: Number(r.pct_sobre_votos_candidato),
       ranking_no_municipio: Number(r.ranking_no_municipio)
     }));

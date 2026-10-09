@@ -93,11 +93,14 @@ Após a interrupção do agente por limite de cota, foi feita revisão direta do
 | O serviço declarava comparabilidade válida sem prova de compatibilidade. | Resultado aritmético auxiliar não é mais marcado como comparação histórica válida. | A metodologia precisa ser ligada a duas bases identificadas e compatíveis. |
 | Relatórios citavam QE estadual fixo e conclusões eleitorais amplas a partir da amostra. | QE estadual passou a ser `null`; textos de relatório foram limitados à amostra e às suas restrições. | Relatórios ainda precisam de revisão integral e validação empírica. |
 | Teste da Fase 3 exigia totais exatos fixos e não protegia contra dados fictícios. | Testes reformulados para verificar limites da amostra, HHI, bloqueios e consistência do relatório sem assumir total eleitoral fixo. | Testes não foram executados neste ambiente; não declarar aprovação até execução. |
+| O motor de HHI gravava o marcador literal `SHA256_VERIFIED` como se fosse hash de proveniência. | O indicador agora calcula SHA-256 determinístico a partir dos nomes e hashes das fontes ingeridas; o teste exige 64 caracteres hexadecimais. | O manifesto identifica os arquivos amostrais registrados; não prova completude nem autenticidade externa das fontes. |
+| O HHI era rotulado com classes baseadas em limiares 0,15/0,25 atribuídos a autores sem validação metodológica documentada. | A classificação qualitativa foi desativada; o HHI é apresentado como indicador exploratório da distribuição de votos na amostra. | Definir e validar universo territorial e limiares antes de comparar classes entre candidatos/eleições. |
+| Colunas `total_votos_estado` e `pct_votos_validos_estado` guardavam valores derivados da amostra. | Esquema e motor renomeados para `total_votos_amostra` e `pct_votos_validos_amostra`. | Mudança adequada ao banco local criado em memória; qualquer banco persistente preexistente exigiria migração explícita. |
 
 ### Estado de validação após as correções
 
 - **Código:** alterações gravadas na `main` em commits sequenciais.
-- **CI (TypeScript, build e testes de salvaguarda):** aprovada no GitHub Actions para o commit `25ed641d7911b7411e5053a48699d542f6f653a7`; execução: https://github.com/Tokenizaa/IE-electoral-Inteligence/actions/runs/37977341704.
+- **CI (TypeScript, build e testes de salvaguarda):** aprovada no GitHub Actions para o commit `9795fbeeca6ff93a7b1d0f80dfd4ef50784e70bf`; execução: https://github.com/Tokenizaa/IE-electoral-Inteligence/actions/runs/37977775189.
 - **Escopo dessa CI:** valida tipagem, build de produção e a suíte `tests/phase3_interface.test.ts`; não comprova cobertura eleitoral completa, reconciliação oficial ou validade científica de todos os indicadores.
 - **Cobertura eleitoral:** permanece amostra parcial do RS em 2022, sem evidência de representatividade estatística ou cobertura estadual completa.
 - **Geometria territorial:** indisponível; nenhum polígono esquemático deve ser apresentado como mapa oficial.

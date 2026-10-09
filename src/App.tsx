@@ -20,8 +20,8 @@ export default function App() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedCandidateSq, setSelectedCandidateSq] = useState<number>(210001610488);
   const [statusInfo, setStatusInfo] = useState({
-    cobertura: 'RS 2022 (Amostra Auditada)',
-    engine: 'PostgreSQL 18 WASM'
+    cobertura: 'Amostra parcial RS 2022',
+    engine: 'PGlite (PostgreSQL embutido)'
   });
 
   useEffect(() => {
@@ -98,12 +98,12 @@ export default function App() {
       <footer className="border-t border-slate-800 bg-slate-950 py-4 px-4 sm:px-6 text-xs text-slate-500">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
           <div>
-            Plataforma Inteligência Eleitoral • Base Oficial TSE • Código Aberto & Auditável
+            Plataforma Inteligência Eleitoral • Amostra de dados eleitorais • Cobertura limitada
           </div>
           <div className="flex items-center gap-3 font-mono text-[11px] text-slate-400">
-            <span>Fase 3: Interface Analítica & IA Científica</span>
+            <span>Fase 3: validação em andamento</span>
             <span>•</span>
-            <span className="text-emerald-400 font-semibold">100% Determinístico</span>
+            <span className="text-emerald-400 font-semibold">Resultados sujeitos à validação</span>
           </div>
         </div>
       </footer>

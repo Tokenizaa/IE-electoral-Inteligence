@@ -195,8 +195,14 @@ function isAllowedTseUrl(rawUrl: string): boolean {
 }
 
 function isYearInPackage(pkg: CkanPackage, year: number): boolean {
-  const title = normalized(`${pkg.title ?? ''} ${pkg.name ?? ''}`);
-  return new RegExp(`(^|[^0-9])${year}([^0-9]|$)`).test(title);
+  const indexedMetadata = [
+    pkg.title,
+    pkg.name,
+    pkg.notes,
+    ...(pkg.resources ?? []).flatMap(resource => [resource.name, resource.description])
+  ].filter(Boolean).join(' ');
+  const searchableText = normalized(indexedMetadata);
+  return new RegExp(`(^|[^0-9])${year}([^0-9]|$)`).test(searchableText);
 }
 
 export class TseOpenDataClient {

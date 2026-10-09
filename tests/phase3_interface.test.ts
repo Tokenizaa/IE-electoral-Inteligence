@@ -17,6 +17,15 @@ async function runPhase3VerificationSuite() {
   const dataService = DataService.getInstance();
   await dataService.ensureDataLoaded();
 
+  const sourceMetadata = await (dataService as any).db.query(
+    'SELECT hash_sha256, status_verificacao FROM meta_fontes_tse'
+  );
+  assert.ok(sourceMetadata.length > 0, 'A ingestão deve registrar metadados de proveniência.');
+  assert.ok(sourceMetadata.every((source: { hash_sha256: string; status_verificacao: string }) =>
+    /^[a-f0-9]{64}$/i.test(source.hash_sha256.trim()) &&
+    source.status_verificacao === 'HASH_LOCAL_CALCULADO'
+  ), 'Hash local calculado não deve ser confundido com verificação oficial da fonte.');
+
   const elections = await dataService.getElections();
   assert.ok(elections.length > 0, 'A amostra deve identificar pelo menos uma eleição disponível.');
 

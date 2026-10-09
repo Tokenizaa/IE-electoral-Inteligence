@@ -129,7 +129,7 @@ export const InvestigationTab: React.FC<InvestigationTabProps> = ({
 
           {viewMode === 'candidate' ? (
             <div>
-              <label className="block text-slate-400 text-[11px] mb-1 font-mono">4. Candidatura na amostra (fonte TSE)</label>
+              <label className="block text-slate-400 text-[11px] mb-1 font-mono">4. Candidatura presente na amostra</label>
               <select
                 value={selectedCandidateSq}
                 onChange={(e) => onSelectCandidateSq(Number(e.target.value))}

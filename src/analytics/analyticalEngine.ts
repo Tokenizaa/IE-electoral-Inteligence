@@ -147,14 +147,14 @@ export class AnalyticalEngine {
     const maiorReduto = rows[0];
     const pctMaiorReduto = Number(((Number(maiorReduto.qt_votos_nominais) / totalVotos) * 100).toFixed(4));
 
-    // Total valid votes in the state for this cargo
-    const stateValidos = await this.db.query<{ total: number }>(
+    // Total de votos nominais + legenda observados na amostra para este cargo
+    const sampleValidos = await this.db.query<{ total: number }>(
       `SELECT COALESCE(SUM(qt_votos), 0) as total
        FROM raw_votacao_munzona
        WHERE id_eleicao = $1 AND cd_cargo = $2 AND (tp_votavel = 'NOMINAL' OR tp_votavel = 'LEGENDA')`,
       [idEleicao, cdCargo]
     );
-    const totalValidosAmostra = Number(stateValidos[0]?.total || 0);
+    const totalValidosAmostra = Number(sampleValidos[0]?.total || 0);
     if (totalValidosAmostra <= 0) {
       throw new Error('Não é possível calcular a participação na amostra sem votos válidos observados.');
     }
@@ -175,7 +175,7 @@ export class AnalyticalEngine {
     }
     const manifestContent = sourceRows
       .map(row => `${row.nome_arquivo.trim()}:${row.hash_sha256.trim().toLowerCase()}`)
-      .join('\\n');
+      .join('\n');
     const manifestSha256 = createHash('sha256').update(manifestContent, 'utf8').digest('hex');
 
     const idIndicador = `HHI_${idEleicao}_${sqCandidato}`;

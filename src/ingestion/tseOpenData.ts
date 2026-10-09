@@ -7,7 +7,7 @@
  */
 import { createHash, randomUUID } from 'node:crypto';
 import { createWriteStream } from 'node:fs';
-import { mkdir, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdir, open, rename, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -279,7 +279,8 @@ export class TseOpenDataClient {
     const extension = safeExtension(String(resource.format ?? ''), url);
     const yearDir = path.join(this.downloadDir, String(year));
     await mkdir(yearDir, { recursive: true });
-    const basename = `${resourceId}${extension}`;
+    const downloadId = new Date().toISOString().replace(/[:.]/g, '-');
+    const basename = `${resourceId}-${downloadId}${extension}`;
     const finalPath = path.join(yearDir, basename);
     const partialPath = `${finalPath}.${randomUUID()}.part`;
     const hash = createHash('sha256');
@@ -343,7 +344,6 @@ export class TseOpenDataClient {
   private async validateFile(filePath: string, extension: string): Promise<{ signatureValid: boolean | null; csvHeader: string[] | null; notes: string[] }> {
     const info = await stat(filePath);
     if (info.size === 0) throw new Error('O recurso baixado está vazio.');
-    const { open, readFile } = await import('node:fs/promises');
     const handle = await open(filePath, 'r');
     const prefix = Buffer.alloc(Math.min(8, info.size));
     try { await handle.read(prefix, 0, prefix.length, 0); } finally { await handle.close(); }
@@ -355,7 +355,10 @@ export class TseOpenDataClient {
       if (!signatureValid) throw new Error('O recurso anunciado como ZIP não possui assinatura ZIP válida.');
       notes.push('Assinatura ZIP validada; o conteúdo interno ainda precisa de validação de layout e integridade.');
     } else if (extension === '.csv' || extension === '.txt') {
-      const sample = (await readFile(filePath)).subarray(0, 64 * 1024).toString('utf8');
+      const sampleBuffer = Buffer.alloc(Math.min(64 * 1024, info.size));
+      const sampleHandle = await open(filePath, 'r');
+      try { await sampleHandle.read(sampleBuffer, 0, sampleBuffer.length, 0); } finally { await sampleHandle.close(); }
+      const sample = sampleBuffer.toString('utf8');
       if (/^\s*<(?:!doctype\s+html|html)/i.test(sample) || /^\s*\{\s*"(?:success|error)"/i.test(sample)) {
         throw new Error('O download retornou uma página HTML/JSON de erro, não um arquivo tabular.');
       }
@@ -368,7 +371,10 @@ export class TseOpenDataClient {
       signatureValid = true;
       notes.push('Cabeçalho tabular plausível detectado; validação semântica e de cobertura ainda pendente.');
     } else if (extension === '.json') {
-      const sample = (await readFile(filePath)).subarray(0, 64 * 1024).toString('utf8').trim();
+      const sampleBuffer = Buffer.alloc(Math.min(64 * 1024, info.size));
+      const sampleHandle = await open(filePath, 'r');
+      try { await sampleHandle.read(sampleBuffer, 0, sampleBuffer.length, 0); } finally { await sampleHandle.close(); }
+      const sample = sampleBuffer.toString('utf8').trim();
       try { JSON.parse(sample); signatureValid = true; }
       catch { signatureValid = null; notes.push('JSON não validado por amostra truncada; validar o documento completo no adaptador correspondente.'); }
     } else {

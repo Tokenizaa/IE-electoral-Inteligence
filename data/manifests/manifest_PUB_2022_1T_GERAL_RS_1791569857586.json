@@ -1,0 +1,11 @@
+{
+  "id_publicacao": "PUB_2022_1T_GERAL_RS_1791569857586",
+  "id_eleicao": "2022_1T_GERAL",
+  "sg_uf": "RS",
+  "timestamp": "2026-10-09T18:17:37.586Z",
+  "versao_metodologia": "1.0.0-PROD-VERIFIED",
+  "status_auditoria": "APROVADO",
+  "total_municipios_projetados": 5,
+  "total_indicadores_projetados": 1,
+  "sha256_manifesto": "8db79f1b933240de7c7b23bf5bb1ea659835b9d8d00e3121ebbfd03f9a3f7862"
+}

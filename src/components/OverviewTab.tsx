@@ -133,7 +133,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ onNavigateTab }) => {
           <div className="p-3 rounded-lg bg-slate-950 border border-slate-800">
             <div className="flex items-center justify-between font-mono text-[10px] text-amber-400 font-bold mb-1">
               <span>TESTE 02</span>
-              <span>PASS</span>
+              <span>PENDENTE</span>
             </div>
             <div className="font-semibold text-white text-xs">Conservação de Votos</div>
             <p className="text-[11px] text-slate-400 mt-0.5">Conciliação com totalizadores oficiais ainda precisa ser demonstrada por teste e fonte identificada.</p>
@@ -142,7 +142,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ onNavigateTab }) => {
           <div className="p-3 rounded-lg bg-slate-950 border border-slate-800">
             <div className="flex items-center justify-between font-mono text-[10px] text-amber-400 font-bold mb-1">
               <span>TESTE 03</span>
-              <span>PASS</span>
+              <span>PENDENTE</span>
             </div>
             <div className="font-semibold text-white text-xs">Território TSE x IBGE</div>
             <p className="text-[11px] text-slate-400 mt-0.5">Vínculos territoriais e correspondência TSE–IBGE ainda precisam de validação documentada.</p>
@@ -151,7 +151,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ onNavigateTab }) => {
           <div className="p-3 rounded-lg bg-slate-950 border border-slate-800">
             <div className="flex items-center justify-between font-mono text-[10px] text-amber-400 font-bold mb-1">
               <span>TESTE 04</span>
-              <span>PASS</span>
+              <span>PENDENTE</span>
             </div>
             <div className="font-semibold text-white text-xs">Integridade de Candidaturas</div>
             <p className="text-[11px] text-slate-400 mt-0.5">Integridade de candidaturas e regras de quociente/sobras não estão validadas por esta interface.</p>

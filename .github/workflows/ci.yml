@@ -32,3 +32,6 @@ jobs:
 
       - name: TSE Open Data catalog and download safeguards
         run: bun run test:tse-open-data
+
+      - name: TSE versioned layout validation safeguards
+        run: bun run test:tse-layout

@@ -113,7 +113,7 @@ export interface AIReportEvidenceBundle {
     pct_candidato: number;
     ranking: number;
   }>;
-  quociente_eleitoral: number;
+  quociente_eleitoral: number | null;
 }
 
 export interface AIReportResponse {

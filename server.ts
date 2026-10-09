@@ -25,7 +25,7 @@ async function startServer() {
   app.get('/api/health', (req, res) => {
     res.json({
       status: 'ok',
-      engine: 'PostgreSQL 18 (PGlite WASM)',
+      engine: 'PGlite (PostgreSQL WASM)',
       cobertura: 'Amostra parcial do RS, eleições gerais de 2022; cobertura estadual/nacional completa não validada.',
       metodologia: 'Resultados sujeitos às limitações documentadas da amostra.'
     });

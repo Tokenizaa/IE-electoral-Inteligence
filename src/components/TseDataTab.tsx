@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Download, ExternalLink, LoaderCircle, RefreshCw, Search } from 'lucide-react';
-import type { TseCatalogResource, TseCatalogResult, TseResourceKind, TseDownloadManifest } from '../ingestion/tseOpenData.ts';
+import type { TseCatalogResource, TseCatalogResult, TseResourceKind, TseDownloadManifest, TseDownloadedInspection } from '../ingestion/tseOpenData.ts';
 
 const kinds: Array<{ value: '' | TseResourceKind; label: string }> = [
   { value: '', label: 'Todos os tipos de recurso' },

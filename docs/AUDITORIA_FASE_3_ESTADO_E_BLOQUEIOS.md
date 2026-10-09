@@ -146,3 +146,15 @@ Correções publicadas após essa verificação:
 4. Foram acrescentados testes para impedir mistura de anos e para o caso de ZIP rotulado como CSV.
 
 A consulta ao catálogo oficial foi testada ao vivo; não foi realizado download integral de um recurso eleitoral real. Os testes de download usam respostas simuladas. A execução da CI que inclui as correções mais recentes ainda precisa terminar com sucesso antes de declarar a etapa tecnicamente verificada.
+
+### Validação cruzada com a página pública do conjunto Resultados - 2022
+
+A página oficial do conjunto [Resultados - 2022](https://dadosabertos.tse.jus.br/dataset/resultados-2022) descreve escopo nacional e lista recursos de votação nominal por município/zona, votação por partido, detalhe de apuração por município/zona e seção, além de arquivos por UF. O próprio TSE alerta para o grande volume de linhas e para a possibilidade de ferramentas comuns truncarem a leitura.
+
+Na inspeção dos links de recursos, foi possível confirmar que há URLs oficiais terminadas em `.zip` mesmo quando o portal apresenta o recurso como CSV. Exemplos:
+- `votacao_candidato_munzona_2022.zip`
+- `Historico_Totalizacao_Presidente_BR_1T_2022.zip`
+
+Isso confirma que a aplicação precisa distinguir **formato declarado no catálogo** de **contêiner efetivo**. O código atual prioriza a extensão real, valida a assinatura ZIP e registra a divergência no manifesto. A inspeção de cargos ainda exige CSV extraído; a extração e a inspeção de arquivos dentro de ZIP continuam como bloqueio explícito, não como uma validação concluída.
+
+O download do binário ZIP integral não pôde ser executado nesta sessão de auditoria; portanto, não há hash calculado por esta execução nem evidência de inspeção de linhas do arquivo oficial. A validação de código permanece baseada em testes automatizados, e a validação dos dados oficiais integrais permanece pendente.

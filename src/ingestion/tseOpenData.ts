@@ -111,6 +111,7 @@ export interface TseDownloadedInspection {
   resource_id: string;
   year: number;
   dataset_title: string;
+  detected_kind: TseResourceKind;
   file_name: string;
   sha256: string;
   layout_columns: string[];
@@ -444,6 +445,7 @@ export class TseOpenDataClient {
       resource_id: resourceId,
       year,
       dataset_title: manifest.dataset_title,
+      detected_kind: manifest.detected_kind,
       file_name: path.basename(filePath),
       sha256: manifest.sha256,
       layout_columns: header,

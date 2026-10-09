@@ -111,7 +111,7 @@ ${report.limitacoes_e_epistemologia.join('\n')}
           </span>
         </div>
         <p className="text-xs text-slate-400 mb-4">
-          A IA atua exclusivamente como assistente de redação e síntese, ancorada 100% em evidências numéricas 
+          A IA atua exclusivamente como assistente de redação e síntese, ancorada nas evidências numéricas disponíveis e nas limitações declaradas 
           previamente apuradas pelo motor determinístico. É expressamente proibida qualquer invenção ou salto causal.
         </p>
 
@@ -187,7 +187,7 @@ ${report.limitacoes_e_epistemologia.join('\n')}
                 <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold ${
                   report.status_ia === 'GERADO_COM_SUCESSO' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-300 border border-amber-500/20'
                 }`}>
-                  {report.status_ia === 'GERADO_COM_SUCESSO' ? 'IA Ancorada em Evidências' : 'Relatório Determinístico Oficial'}
+                  {report.status_ia === 'GERADO_COM_SUCESSO' ? 'IA Ancorada em Evidências' : 'Relatório Determinístico (amostra)'}
                 </span>
                 <span className="text-xs text-slate-500">•</span>
                 <span className="text-xs text-slate-400 font-mono">{report.modelo_ia_utilizado}</span>

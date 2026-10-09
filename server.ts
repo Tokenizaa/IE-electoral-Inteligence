@@ -86,7 +86,7 @@ async function startServer() {
       const dist = await dataService.getElectoralDistribution(ano, vagas);
       res.json(dist);
     } catch (err: any) {
-      res.status(500).json({ error: err.message });
+      res.status(409).json({ error: err.message });
     }
   });
 

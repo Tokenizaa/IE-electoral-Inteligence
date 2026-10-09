@@ -11,6 +11,7 @@ import { TerritoryTab } from './components/TerritoryTab.tsx';
 import { ComparisonsTab } from './components/ComparisonsTab.tsx';
 import { AIReportsTab } from './components/AIReportsTab.tsx';
 import { DocsTab } from './components/DocsTab.tsx';
+import { TseDataTab } from './components/TseDataTab.tsx';
 import { ApiClient } from './api/client.ts';
 import { CandidateItem } from './api/types.ts';
 
@@ -88,6 +89,8 @@ export default function App() {
             selectedCandidateSq={selectedCandidateSq}
           />
         )}
+
+        {activeTab === 'sources' && <TseDataTab />}
 
         {activeTab === 'docs' && (
           <DocsTab />

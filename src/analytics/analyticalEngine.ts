@@ -11,7 +11,7 @@ export interface CandidateHHIReport {
   versao_metodologia: string;
   sq_candidato: number;
   id_eleicao: string;
-  total_votos_estado: number;
+  total_votos_amostra: number;
   hhi_concentracao: number;
   classificacao_espacial: string;
   municipios_com_voto: number;
@@ -141,13 +141,8 @@ export class AnalyticalEngine {
 
     const hhi = Number(hhiSum.toFixed(6));
 
-    // Classificação Teórica (Ames / Carvalho)
-    let classificacao = 'DISPERSO / FRAGMENTADO';
-    if (hhi >= 0.25) {
-      classificacao = 'ALTAMENTE CONCENTRADO (REDUTO ELEITORAL DEFINIDO)';
-    } else if (hhi >= 0.15) {
-      classificacao = 'CONCENTRAÇÃO MODERADA';
-    }
+    // Não aplicamos classes qualitativas sem limiares e universo territorial validados.
+    const classificacao = 'NÃO CLASSIFICADO — LIMIARES NÃO VALIDADOS';
 
     const maiorReduto = rows[0];
     const pctMaiorReduto = Number(((Number(maiorReduto.qt_votos_nominais) / totalVotos) * 100).toFixed(4));
@@ -159,8 +154,11 @@ export class AnalyticalEngine {
        WHERE id_eleicao = $1 AND cd_cargo = $2 AND (tp_votavel = 'NOMINAL' OR tp_votavel = 'LEGENDA')`,
       [idEleicao, cdCargo]
     );
-    const totalValidosEstado = Number(stateValidos[0]?.total || 1);
-    const pctEstado = Number(((totalVotos / totalValidosEstado) * 100).toFixed(4));
+    const totalValidosAmostra = Number(stateValidos[0]?.total || 0);
+    if (totalValidosAmostra <= 0) {
+      throw new Error('Não é possível calcular a participação na amostra sem votos válidos observados.');
+    }
+    const pctValidosAmostra = Number(((totalVotos / totalValidosAmostra) * 100).toFixed(4));
 
     // Hash real e reproduzível do manifesto das fontes efetivamente registradas.
     // Isto identifica os arquivos amostrais ingeridos; não certifica cobertura estadual/nacional.
@@ -185,13 +183,13 @@ export class AnalyticalEngine {
     await this.db.query(
       `INSERT INTO mart_indicadores_candidato (
         id_indicador, id_eleicao, sq_candidato, cd_cargo,
-        total_votos_estado, pct_votos_validos_estado, hhi_concentracao,
+        total_votos_amostra, pct_votos_validos_amostra, hhi_concentracao,
         classificacao_espacial, municipios_com_voto, maior_reduto_cd_ibge,
         pct_maior_reduto, manifest_sha256, data_calculo
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, CURRENT_TIMESTAMP)
       ON CONFLICT (id_eleicao, sq_candidato) DO UPDATE SET
-        total_votos_estado = EXCLUDED.total_votos_estado,
-        pct_votos_validos_estado = EXCLUDED.pct_votos_validos_estado,
+        total_votos_amostra = EXCLUDED.total_votos_amostra,
+        pct_votos_validos_amostra = EXCLUDED.pct_votos_validos_amostra,
         hhi_concentracao = EXCLUDED.hhi_concentracao,
         classificacao_espacial = EXCLUDED.classificacao_espacial,
         municipios_com_voto = EXCLUDED.municipios_com_voto,
@@ -201,7 +199,7 @@ export class AnalyticalEngine {
         data_calculo = CURRENT_TIMESTAMP`,
       [
         idIndicador, idEleicao, sqCandidato, cdCargo,
-        totalVotos, pctEstado, hhi, classificacao,
+        totalVotos, pctValidosAmostra, hhi, classificacao,
         rows.length, maiorReduto.cd_ibge, pctMaiorReduto,
         manifestSha256
       ]
@@ -209,17 +207,17 @@ export class AnalyticalEngine {
 
     return {
       indicador_id: idIndicador,
-      versao_metodologia: '1.0.0-HHI-CANONICAL',
+      versao_metodologia: '1.1.0-HHI-SAMPLE-ONLY',
       sq_candidato: sqCandidato,
       id_eleicao: idEleicao,
-      total_votos_estado: totalVotos,
+      total_votos_amostra: totalVotos,
       hhi_concentracao: hhi,
       classificacao_espacial: classificacao,
       municipios_com_voto: rows.length,
       maior_reduto_cd_ibge: maiorReduto.cd_ibge,
       maior_reduto_nome: maiorReduto.nm_municipio,
       pct_maior_reduto: pctMaiorReduto,
-      limites_epistemologicos: 'O HHI afere apenas a dispersão geográfica dos votos nominais obtidos pelo candidato entre os municípios, não inferindo a lealdade ideológica de eleitores individuais nem correlação de causalidade com gastos de campanha.'
+      limites_epistemologicos: 'O HHI é a soma dos quadrados das participações municipais nos votos nominais observados na amostra. A classificação qualitativa e seus limiares não foram validados; o indicador não representa votação estadual completa, não mede lealdade individual e não demonstra causalidade.'
     };
   }
 

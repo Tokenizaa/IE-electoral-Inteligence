@@ -129,7 +129,7 @@ export const InvestigationTab: React.FC<InvestigationTabProps> = ({
 
           {viewMode === 'candidate' ? (
             <div>
-              <label className="block text-slate-400 text-[11px] mb-1 font-mono">4. Candidatura Oficial (TSE)</label>
+              <label className="block text-slate-400 text-[11px] mb-1 font-mono">4. Candidatura na amostra (fonte TSE)</label>
               <select
                 value={selectedCandidateSq}
                 onChange={(e) => onSelectCandidateSq(Number(e.target.value))}
@@ -197,7 +197,7 @@ export const InvestigationTab: React.FC<InvestigationTabProps> = ({
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs border border-slate-700 transition-colors"
                 >
                   <Download className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>Exportar CSV Oficial</span>
+                  <span>Exportar CSV da amostra</span>
                 </button>
               </div>
             </div>
@@ -209,7 +209,7 @@ export const InvestigationTab: React.FC<InvestigationTabProps> = ({
                 <div className="text-lg font-bold text-white mt-0.5">
                   {analysis.total_votos_amostra.toLocaleString()}
                 </div>
-                <div className="text-[10px] text-slate-500 mt-0.5">Na base auditada de 2022</div>
+                <div className="text-[10px] text-slate-500 mt-0.5">Nos registros amostrais de 2022</div>
               </div>
 
               <div className="p-3 rounded-lg bg-slate-950 border border-slate-800">
@@ -264,11 +264,11 @@ export const InvestigationTab: React.FC<InvestigationTabProps> = ({
                   Distribuição Territorial Municipal dos Votos
                 </h3>
                 <p className="text-[11px] text-slate-400">
-                  Desagregação com códigos oficiais IBGE (7 dígitos) e TSE (5 dígitos), sem interpolação fictícia.
+                  Registros com códigos TSE/IBGE presentes na amostra; os vínculos territoriais ainda precisam de validação independente.
                 </p>
               </div>
               <span className="text-xs font-mono text-slate-400">
-                {analysis.resultados_municipais.length} municípios auditados
+                {analysis.resultados_municipais.length} municípios com registros na amostra
               </span>
             </div>
 

@@ -30,6 +30,7 @@ async function runPhase3VerificationSuite() {
   assert.ok(Number.isFinite(analysis.total_votos_amostra) && analysis.total_votos_amostra >= 0);
   assert.ok(Number.isFinite(analysis.hhi_concentracao));
   assert.ok(analysis.hhi_concentracao >= 0 && analysis.hhi_concentracao <= 1);
+  assert.match(analysis.classificacao_espacial, /NÃO CLASSIFICADO.*LIMIARES NÃO VALIDADOS/i, 'Não aplicar classes qualitativas sem limiares metodológicos validados.');
 
   const indicatorRows = await (dataService as any).db.query(
     'SELECT manifest_sha256 FROM mart_indicadores_candidato WHERE id_eleicao = $1 AND sq_candidato = $2',

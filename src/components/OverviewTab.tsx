@@ -68,7 +68,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ onNavigateTab }) => {
           </div>
           <div className="text-base font-bold text-white">Eleições Gerais 2022 (RS)</div>
           <p className="text-[11px] text-slate-400 leading-relaxed">
-            Amostra representativa auditada do Rio Grande do Sul: Caxias do Sul, Bento Gonçalves, Farroupilha, Flores da Cunha e Porto Alegre.
+            Amostra parcial de municípios do Rio Grande do Sul. Não representa cobertura estadual completa e sua representatividade não foi demonstrada.
           </p>
           <div className="text-[10px] text-emerald-400 font-mono font-semibold pt-1">
             Cobertura parcial • validação cartográfica pendente

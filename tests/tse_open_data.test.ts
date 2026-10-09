@@ -74,7 +74,29 @@ async function run() {
     assert.equal(inspection.cargos.find(item => item.cd_cargo === '1')?.ds_cargo, 'PRESIDENTE');
     assert.match(inspection.validation_status, /LAYOUT_AINDA_REQUER_VALIDACAO/);
 
-    await assert.rejects(() => client.downloadResource(resourceId, 2024), /não foi identificado como eleição de 2024/);
+    await assert.rejects(() => client.downloadResource(resourceId, 2024), /não foi identificado individualmente como pertencente à eleição de 2024/);
+
+    // A generic package can hold several years; only year-labelled resources belong in each result.
+    const multiYear2022 = { ...resource, id: '11111111-1111-1111-1111-111111111111', name: 'Votação nominal - 2022', description: 'Todas as UFs', package_id: packageId };
+    const multiYear2026 = { ...resource, id: '22222222-2222-2222-2222-222222222222', name: 'Votação nominal - 2026', description: 'Todas as UFs', package_id: packageId };
+    const genericPackage = { ...pkg, name: 'resultados-votacao', title: 'Resultados de votação', notes: 'Arquivos por ano eleitoral', resources: [multiYear2022, multiYear2026] };
+    const multiYearFetch: typeof fetch = async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith('/package_search')) return Response.json({ success: true, result: { count: 1, results: [genericPackage] } });
+      if (url.pathname.endsWith('/resource_show')) {
+        const id = url.searchParams.get('id');
+        return Response.json({ success: true, result: id === multiYear2026.id ? multiYear2026 : multiYear2022 });
+      }
+      if (url.pathname.endsWith('/package_show')) return Response.json({ success: true, result: genericPackage });
+      throw new Error(`Unexpected URL: ${url}`);
+    };
+    const multiYearClient = new TseOpenDataClient({ fetchImpl: multiYearFetch, downloadDir: tempDir });
+    const yearScopedCatalog = await multiYearClient.search(2022);
+    assert.deepEqual(yearScopedCatalog.resources.map(item => item.id), [multiYear2022.id]);
+    await assert.rejects(
+      () => multiYearClient.downloadResource(multiYear2026.id, 2022),
+      /não foi identificado individualmente/
+    );
 
     // CKAN metadata may say CSV while the official resource URL is a ZIP container.
     const zipResource = {

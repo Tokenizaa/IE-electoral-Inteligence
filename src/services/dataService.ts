@@ -345,7 +345,7 @@ Responda em formato JSON estrito com as seguintes chaves:
         titulo: `Relatório Analítico Assistido por IA — ${analysis.candidate.nm_urna_candidato}`,
         pergunta_investigacao: req.questao_analitica || 'Estrutura territorial e perfil de votação da candidatura',
         timestamp: new Date().toISOString(),
-        modelo_ia_utilizado: 'gemini-3.8-flash (Grounded via @google/genai)',
+        modelo_ia_utilizado: 'gemini-3.8-flash (contexto estruturado; sem recuperação externa)',
         status_ia: 'GERADO_COM_SUCESSO',
         resumo_executivo: parsedText.resumo_executivo || `Análise limitada aos registros amostrais disponíveis para ${analysis.candidate.nm_urna_candidato}.`,
         diagnostico_territorial: parsedText.diagnostico_territorial || `Votação concentrada em ${analysis.maior_reduto_nome}.`,

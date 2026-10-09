@@ -265,7 +265,7 @@ ${report.limitacoes_e_epistemologia.join('\n')}
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
               <div className="p-2 rounded bg-slate-900 border border-slate-800">
-                <span className="text-slate-500 text-[10px] block">Votos Apurados:</span>
+                <span className="text-slate-500 text-[10px] block">Votos nominais na amostra:</span>
                 <span className="text-white font-bold">{report.evidencias_vinculadas.total_votos_amostra.toLocaleString()}</span>
               </div>
               <div className="p-2 rounded bg-slate-900 border border-slate-800">

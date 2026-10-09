@@ -25,7 +25,7 @@ const pkg = {
 
 async function run() {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'tse-open-data-'));
-  const csv = 'ANO_ELEICAO;CD_CARGO;SQ_CANDIDATO;QT_VOTOS_NOMINAIS_VALIDOS\n2022;7;12345;10\n';
+  const csv = 'ANO_ELEICAO;CD_CARGO;DS_CARGO;SQ_CANDIDATO;QT_VOTOS_NOMINAIS_VALIDOS\n2022;7;DEPUTADO ESTADUAL;12345;10\n2022;1;PRESIDENTE;12346;20\n2022;7;DEPUTADO ESTADUAL;12347;5\n';
 
   const mockFetch: typeof fetch = async (input) => {
     const url = new URL(String(input));

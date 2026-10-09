@@ -372,7 +372,7 @@ Responda em formato JSON estrito com as seguintes chaves:
         modelo_ia_utilizado: 'Falha no Provedor Gemini (Fallback Determinístico Ativado)',
         status_ia: 'IA_INDISPONIVEL_RELATORIO_DETERMINISTICO',
         resumo_executivo: `O candidato ${analysis.candidate.nm_urna_candidato} (${analysis.candidate.sg_partido}) obteve ${analysis.total_votos_amostra.toLocaleString()} votos nominais nos registros da amostra carregada; esse total não representa a votação estadual completa. Classificação qualitativa territorial não validada; HHI exploratório da amostra: ${analysis.hhi_concentracao}.`,
-        diagnostico_territorial: `O principal reduto eleitoral foi ${analysis.maior_reduto_nome}, com ${analysis.pct_maior_reduto}% de todos os votos nominais do candidato (${evidenceBundle.top_municipios[0]?.votos.toLocaleString()} votos).`,
+        diagnostico_territorial: `O município com maior volume de votos nominais observados na amostra foi ${analysis.maior_reduto_nome}, com ${analysis.pct_maior_reduto}% dos votos do candidato registrados na própria amostra (${evidenceBundle.top_municipios[0]?.votos.toLocaleString()} votos).`,
         analise_institucional: `Não é possível verificar o piso individual do QE: a amostra não contém a votação estadual completa necessária.`,
         evidencias_vinculadas: evidenceBundle,
         limitacoes_e_epistemologia: [

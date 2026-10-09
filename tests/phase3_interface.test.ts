@@ -55,6 +55,7 @@ async function runPhase3VerificationSuite() {
     });
     assert.equal(report.evidencias_vinculadas.total_votos_amostra, analysis.total_votos_amostra);
     assert.equal(report.evidencias_vinculadas.quociente_eleitoral, null);
+    assert.match(report.evidencias_vinculadas.cobertura, /amostra parcial/i);
     assert.ok(report.limitacoes_e_epistemologia.length > 0);
     assert.match(report.resumo_executivo, /amostra/i);
   } finally {

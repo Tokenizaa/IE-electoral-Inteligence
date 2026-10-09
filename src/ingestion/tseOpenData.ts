@@ -6,10 +6,11 @@
  * the analytical model. A separate, versioned adapter must validate each layout first.
  */
 import { createHash, randomUUID } from 'node:crypto';
-import { createWriteStream } from 'node:fs';
-import { mkdir, open, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { createReadStream, createWriteStream } from 'node:fs';
+import { mkdir, open, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { Readable, Transform } from 'node:stream';
+import { createInterface } from 'node:readline';
 import { pipeline } from 'node:stream/promises';
 
 const CKAN_API = 'https://dadosabertos.tse.jus.br/api/3/action';
@@ -98,6 +99,50 @@ export interface TseDownloadManifest {
     notes: string[];
   };
   local_file: string;
+}
+
+export interface TseCargoObservation {
+  cd_cargo: string;
+  ds_cargo: string | null;
+  registros_observados: number;
+}
+
+export interface TseDownloadedInspection {
+  resource_id: string;
+  year: number;
+  dataset_title: string;
+  file_name: string;
+  sha256: string;
+  layout_columns: string[];
+  total_registros: number;
+  registros_sem_cargo: number;
+  cargos: TseCargoObservation[];
+  validation_status: 'CARGOS_EXTRAIDOS_LAYOUT_AINDA_REQUER_VALIDACAO';
+  limitations: string[];
+}
+
+function parseDelimitedLine(line: string, delimiter: string): string[] {
+  const cells: string[] = [];
+  let value = '';
+  let quoted = false;
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"') {
+      if (quoted && line[i + 1] === '"') {
+        value += '"';
+        i++;
+      } else {
+        quoted = !quoted;
+      }
+    } else if (char === delimiter && !quoted) {
+      cells.push(value.trim());
+      value = '';
+    } else {
+      value += char;
+    }
+  }
+  cells.push(value.trim());
+  return cells;
 }
 
 export interface TseOpenDataOptions {
@@ -325,6 +370,90 @@ export class TseOpenDataClient {
       await rm(partialPath, { force: true });
       throw error;
     }
+  }
+
+  async inspectDownloadedResource(resourceId: string, year: number): Promise<TseDownloadedInspection> {
+    if (!/^[a-f0-9-]{16,64}$/i.test(resourceId)) throw new Error('Identificador de recurso CKAN inválido.');
+    if (!Number.isInteger(year) || year < 1994 || year > new Date().getFullYear() + 1) throw new Error('Ano eleitoral inválido.');
+
+    const yearDir = path.resolve(this.downloadDir, String(year));
+    const files = await readdir(yearDir).catch(() => []);
+    const manifestNames = files
+      .filter(name => name.startsWith(`${resourceId}-`) && name.endsWith('.manifest.json'))
+      .sort()
+      .reverse();
+    if (manifestNames.length === 0) throw new Error('Nenhum manifesto de download encontrado para esse recurso e ano.');
+
+    const manifestPath = path.resolve(yearDir, manifestNames[0]);
+    const manifest = JSON.parse(await (await import('node:fs/promises')).readFile(manifestPath, 'utf8')) as TseDownloadManifest;
+    const filePath = path.resolve(manifest.local_file);
+    const relative = path.relative(yearDir, filePath);
+    if (relative.startsWith('..') || path.isAbsolute(relative)) throw new Error('O manifesto aponta para um arquivo fora do diretório de downloads permitido.');
+    if (path.extname(filePath).toLowerCase() !== '.csv') {
+      throw new Error('A inspeção de cargos exige CSV. Recursos ZIP precisam ser extraídos e inspecionados por um adaptador próprio.');
+    }
+
+    const reader = createInterface({ input: createReadStream(filePath, { encoding: 'utf8' }), crlfDelay: Infinity });
+    let header: string[] | null = null;
+    let delimiter = ';';
+    let cargoIndex = -1;
+    let descriptionIndex = -1;
+    let totalRegistros = 0;
+    let registrosSemCargo = 0;
+    const cargos = new Map<string, { ds_cargo: string | null; registros_observados: number }>();
+    try {
+      for await (const line of reader) {
+        if (!line.trim()) continue;
+        if (!header) {
+          delimiter = line.includes(';') ? ';' : ',';
+          header = parseDelimitedLine(line, delimiter).map(value => value.replace(/^\uFEFF/, '').toUpperCase());
+          cargoIndex = header.indexOf('CD_CARGO');
+          descriptionIndex = header.indexOf('DS_CARGO');
+          if (cargoIndex < 0) throw new Error('O CSV não contém a coluna CD_CARGO; não é possível identificar a cobertura por cargo.');
+          continue;
+        }
+        const row = parseDelimitedLine(line, delimiter);
+        if (row.length <= cargoIndex) {
+          registrosSemCargo++;
+          continue;
+        }
+        totalRegistros++;
+        const code = row[cargoIndex]?.trim();
+        if (!code) {
+          registrosSemCargo++;
+          continue;
+        }
+        const description = descriptionIndex >= 0 ? (row[descriptionIndex]?.trim() || null) : null;
+        const current = cargos.get(code) ?? { ds_cargo: description, registros_observados: 0 };
+        current.registros_observados++;
+        if (!current.ds_cargo && description) current.ds_cargo = description;
+        cargos.set(code, current);
+      }
+    } finally {
+      reader.close();
+    }
+
+    if (!header) throw new Error('CSV vazio; não foi possível inspecionar os cargos.');
+    return {
+      resource_id: resourceId,
+      year,
+      dataset_title: manifest.dataset_title,
+      file_name: path.basename(filePath),
+      sha256: manifest.sha256,
+      layout_columns: header,
+      total_registros: totalRegistros,
+      registros_sem_cargo: registrosSemCargo,
+      cargos: Array.from(cargos.entries())
+        .map(([cd_cargo, value]) => ({ cd_cargo, ...value }))
+        .sort((a, b) => Number(a.cd_cargo) - Number(b.cd_cargo)),
+      validation_status: 'CARGOS_EXTRAIDOS_LAYOUT_AINDA_REQUER_VALIDACAO',
+      limitations: [
+        'A contagem representa linhas no arquivo baixado, não votos totais nem cobertura oficial comprovada.',
+        'A leitura trata registros CSV linha a linha; layouts com campos contendo quebras de linha exigem parser CSV especializado.',
+        'A presença de CD_CARGO permite identificar cargos observados, mas não prova que todos os cargos/candidaturas do pleito estejam presentes.',
+        'ZIP não é extraído automaticamente nesta etapa.'
+      ]
+    };
   }
 
   private async fetchTseDownload(initialUrl: string): Promise<Response> {

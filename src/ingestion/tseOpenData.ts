@@ -265,13 +265,8 @@ export class TseOpenDataClient {
       throw new Error(`O recurso pertence ao conjunto "${pkg.title ?? pkg.name}", que não foi identificado como eleição de ${year}.`);
     }
     const url = String(resource.url);
-    const response = await this.fetchImpl(url, {
-      headers: { 'user-agent': 'InteligenciaEleitoral/1.0 (TSE Open Data client)' },
-      signal: AbortSignal.timeout(30 * 60_000),
-      redirect: 'follow'
-    });
+    const response = await this.fetchTseDownload(url);
     if (!response.ok || !response.body) throw new Error(`Falha ao baixar recurso TSE: HTTP ${response.status}.`);
-    if (!isAllowedTseUrl(response.url || url)) throw new Error('O download redirecionou para um domínio não autorizado.');
 
     const declaredLength = Number(response.headers.get('content-length') ?? 0);
     if (declaredLength > this.maxDownloadBytes) throw new Error(`O recurso excede o limite de download de ${this.maxDownloadBytes} bytes.`);
@@ -330,6 +325,26 @@ export class TseOpenDataClient {
       await rm(partialPath, { force: true });
       throw error;
     }
+  }
+
+  private async fetchTseDownload(initialUrl: string): Promise<Response> {
+    let currentUrl = initialUrl;
+    for (let redirectCount = 0; redirectCount <= 5; redirectCount++) {
+      if (!isAllowedTseUrl(currentUrl)) {
+        throw new Error('O download tentou acessar um domínio não autorizado; somente hosts oficiais do TSE são permitidos.');
+      }
+      const response = await this.fetchImpl(currentUrl, {
+        headers: { 'user-agent': 'InteligenciaEleitoral/1.0 (TSE Open Data client)' },
+        signal: AbortSignal.timeout(30 * 60_000),
+        redirect: 'manual'
+      });
+      if (![301, 302, 303, 307, 308].includes(response.status)) return response;
+      const location = response.headers.get('location');
+      if (!location) throw new Error('Redirecionamento do TSE sem cabeçalho Location.');
+      if (redirectCount === 5) throw new Error('O recurso excedeu o limite de cinco redirecionamentos.');
+      currentUrl = new URL(location, currentUrl).toString();
+    }
+    throw new Error('Não foi possível resolver o redirecionamento do recurso TSE.');
   }
 
   private extensionMatchesFormat(extension: string, format: string): boolean {

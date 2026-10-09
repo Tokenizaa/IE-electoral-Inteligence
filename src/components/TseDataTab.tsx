@@ -195,7 +195,7 @@ export const TseDataTab: React.FC = () => {
                       <div className="flex items-center gap-2 font-semibold text-emerald-300"><CheckCircle2 className="h-4 w-4" />Download e hash concluídos</div>
                       <p className="mt-1 break-all text-slate-400">SHA-256: <span className="font-mono text-slate-300">{manifest.sha256}</span></p>
                       <p className="mt-1 text-amber-200">Revisão de layout e validação de cobertura ainda pendentes.</p>
-                      {resource.format.toUpperCase().includes('CSV') && (
+                      {manifest.local_file.toLowerCase().endsWith('.csv') && (
                         <button onClick={() => void inspectCargos(resource)} disabled={inspectingId !== null} className="mt-3 inline-flex items-center gap-2 rounded-md border border-slate-700 px-3 py-2 text-slate-200 hover:bg-slate-800 disabled:opacity-50">
                           {inspectingId === resource.id ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
                           {inspectingId === resource.id ? 'Inspecionando arquivo...' : 'Identificar cargos presentes'}

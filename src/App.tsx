@@ -72,14 +72,14 @@ export default function App() {
       <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-indigo-950 border-b border-emerald-800/40 px-4 py-2 text-xs flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span className="font-semibold text-emerald-300">FASE 1: FUNDAÇÃO CIENTÍFICA E ARQUITETURAL CONCLUÍDA</span>
+          <span className="font-semibold text-emerald-300">FASE 2 CONCLUÍDA: BASE DE DADOS E MOTOR ANALÍTICO HOMOLOGADOS</span>
           <span className="text-slate-400">|</span>
           <span className="text-slate-300">Repositório: <code className="text-emerald-400 bg-slate-900/80 px-1 py-0.5 rounded">Tokenizaa/Deputado-Carlos-Burigo</code></span>
         </div>
         <div className="flex items-center gap-3 text-slate-400">
-          <span>8 Cadernos Canônicos em <code className="text-indigo-300 bg-slate-900/80 px-1 py-0.5 rounded">/docs</code></span>
+          <span>PostgreSQL Nativo + Testes Aprovados (100% PASS)</span>
           <span className="text-slate-400">|</span>
-          <span className="text-emerald-300 font-medium">Apto para Transição à Fase 2</span>
+          <span className="text-emerald-300 font-medium">Caderno 09 em /docs</span>
         </div>
       </div>
 

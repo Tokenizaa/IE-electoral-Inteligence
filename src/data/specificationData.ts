@@ -89,6 +89,16 @@ export const CANONICAL_DOCS: CanonicalDoc[] = [
     iconName: "Award",
     badge: "Transição para Fase 2",
     contentMarkdownFile: "08_CRITERIOS_DE_ACEITE_FASE_2.md"
+  },
+  {
+    id: "09_evidencias",
+    caderno: "Caderno 09",
+    title: "Relatório de Evidências, Validação Empírica e Estado da Fase 2",
+    summary: "Relatório canônico de testes executados: 4 testes de fechamento aprovados, idempotência verificada, Sobras D'Hondt Lei 14.211/2021 validadas e publicador remoto com SHA-256.",
+    path: "/docs/09_EVIDENCIAS_E_RELATORIO_FASE_2.md",
+    iconName: "FileCheck",
+    badge: "Fase 2 Homologada",
+    contentMarkdownFile: "09_EVIDENCIAS_E_RELATORIO_FASE_2.md"
   }
 ];
 

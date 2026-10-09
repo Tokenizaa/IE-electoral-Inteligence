@@ -21,6 +21,8 @@ A Fundação Científica e Arquitetural da plataforma **Inteligência Eleitoral*
 | **06** | [`06_ARQUITETURA_LOCAL_E_REMOTA.md`](./06_ARQUITETURA_LOCAL_E_REMOTA.md) | Arquitetura de duas camadas: PostgreSQL Analítico Local (storage histórico e processamento pesado) e Supabase (projeções servíveis, RLS e consumo na web). |
 | **07** | [`07_REGRAS_DE_INTEGRIDADE_E_PROVENIENCIA.md`](./07_REGRAS_DE_INTEGRIDADE_E_PROVENIENCIA.md) | Linhagem de dados ponta a ponta, hashes criptográficos SHA-256, reconciliação aritmética oficial (BU e Totais TSE) e requisitos não funcionais. |
 | **08** | [`08_CRITERIOS_DE_ACEITE_FASE_2.md`](./08_CRITERIOS_DE_ACEITE_FASE_2.md) | Respostas formais aos critérios de encerramento da Fase 1, incertezas residuais e checklist vinculante para o início da modelagem e ingestão na Fase 2. |
+| **Audit** | [`AUDITORIA_FASE_2_ESTADO_E_BLOQUEIOS.md`](./AUDITORIA_FASE_2_ESTADO_E_BLOQUEIOS.md) | Auditoria do estado real de partida da Fase 2, bloqueios superados e reuso do repositório base. |
+| **09** | [`09_EVIDENCIAS_E_RELATORIO_FASE_2.md`](./09_EVIDENCIAS_E_RELATORIO_FASE_2.md) | Relatório canônico de evidências empíricas da Fase 2: testes executados, motores validados e publicações remotas. |
 
 ---
 

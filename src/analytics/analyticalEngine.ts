@@ -172,7 +172,7 @@ export class AnalyticalEngine {
        ORDER BY nome_arquivo, hash_sha256`,
       [idEleicao]
     );
-    if (sourceRows.length === 0 || sourceRows.some(row => !/^[a-f0-9]{64}$/i.test(row.hash_sha256))) {
+    if (sourceRows.length === 0 || sourceRows.some(row => !/^[a-f0-9]{64}$/i.test(row.hash_sha256.trim()))) {
       throw new Error('Não é possível calcular o HHI sem hashes SHA-256 válidos das fontes ingeridas.');
     }
     const manifestContent = sourceRows

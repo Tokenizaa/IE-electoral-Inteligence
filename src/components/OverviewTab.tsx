@@ -79,7 +79,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ onNavigateTab }) => {
             <span>MOTOR DE BANCO DE DADOS</span>
             <HardDrive className="w-4 h-4 text-emerald-400" />
           </div>
-          <div className="text-base font-bold text-white">PostgreSQL 18 (PGlite WASM)</div>
+          <div className="text-base font-bold text-white">PGlite (PostgreSQL WASM)</div>
           <p className="text-[11px] text-slate-400 leading-relaxed">
             Banco relacional local. A integridade referencial e a idempotência da ingestão precisam de execução de testes e evidências reproduzíveis.
           </p>

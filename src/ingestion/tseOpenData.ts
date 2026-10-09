@@ -168,17 +168,19 @@ function classifyResource(name: string, description: string, format: string): Ts
 }
 
 function safeExtension(format: string, url: string): string {
-  const fmt = normalized(format);
-  if (fmt.includes('CSV')) return '.csv';
-  if (fmt.includes('ZIP')) return '.zip';
-  if (fmt.includes('JSON')) return '.json';
-  if (fmt.includes('TXT') || fmt.includes('TEXT')) return '.txt';
+  // TSE metadata sometimes labels a ZIP container as CSV. Prefer the actual
+  // resource path suffix when present; retain metadata separately for audit.
   try {
     const ext = path.extname(new URL(url).pathname).toLowerCase();
-    if (/^\.(csv|zip|txt|json|7z|gz)$/.test(ext)) return ext;
+    if (/^\\.(csv|zip|txt|json|7z|gz)$/.test(ext)) return ext;
   } catch {
     // URL validation happens separately.
   }
+  const fmt = normalized(format);
+  if (fmt.includes('ZIP')) return '.zip';
+  if (fmt.includes('CSV')) return '.csv';
+  if (fmt.includes('JSON')) return '.json';
+  if (fmt.includes('TXT') || fmt.includes('TEXT')) return '.txt';
   return '.bin';
 }
 

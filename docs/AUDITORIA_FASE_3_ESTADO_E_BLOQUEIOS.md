@@ -10,31 +10,32 @@
 
 ## 1. Verificação do Histórico e Integridade da Fase 2
 
-A auditoria inicial comprovou que:
-1. O commit de referência da Fase 2 (`a5f21c0`) está presente na história da branch `main`.
-2. A suíte de testes de validação empírica (`tests/phase2_engine.test.ts`) foi executada no ambiente com resultado **100% APROVADO** (`exit code 0`), cobrindo:
-   - Inicialização DDL no PostgreSQL (WASM / PGlite v18.3).
-   - Ingestão de 4 arquivos amostrais reais do TSE (RS 2022).
-   - Idempotência do pipeline (re-ingestão manteve exatamente 36 registros atômicos).
-   - Aprovação nos 4 testes canônicos de integridade e fechamento de urna.
-   - Cálculo determinístico de quocientes e sobras D'Hondt (Lei 14.211/2021 + STF ADI 7228).
-   - Cálculo de HHI de concentração espacial (0.572972 para Carlos Búrigo).
-   - Publicação remota e manifesto assinado com SHA-256.
+O relatório histórico da Fase 2 registra os itens abaixo, mas esta revisão corretiva da Fase 3 não reexecutou a suíte completa da Fase 2 nem verificou novamente todas as evidências de publicação. Portanto, esses itens não devem ser tratados como aprovação independente desta revisão:
+1. Commit de referência informado: `a5f21c0`.
+2. O relatório anterior declara execução de `tests/phase2_engine.test.ts` com `exit code 0`, incluindo:
+   - Inicialização DDL com PGlite.
+   - Ingestão de quatro arquivos amostrais do TSE (RS 2022).
+   - Idempotência com 36 registros atômicos.
+   - Testes de integridade e fechamento de urna.
+   - Cálculo de quocientes/sobras e HHI.
+   - Publicação remota e manifesto SHA-256.
+   
+   Os números e resultados acima são afirmações do relatório histórico; sua reprodutibilidade precisa ser confirmada separadamente.
 
 ---
 
 ## 2. Inventário dos Motores e Componentes Existentes
 
-| Componente | Estado Real | Comportamento Confirmado |
+| Componente | Estado nesta revisão | Observação |
 | :--- | :--- | :--- |
-| `src/db/database.ts` | Operacional | Conector PostgreSQL baseado em PGlite, com transações e consultas parametrizadas. |
-| `src/db/schema.sql` | Operacional | DDL físico com tabelas `meta_*`, `dim_*`, `raw_*`, `mart_*` com restrições ativas. |
-| `src/db/supabase_schema.sql` | Operacional | DDL servível com políticas de Row Level Security (RLS) habilitadas. |
-| `src/ingestion/pipeline.ts` | Operacional | Ingestão com identificação de lote, detecção de encoding e registro de proveniência. |
-| `src/integrity/integrityEngine.ts` | Operacional | Motor dos 4 testes de fechamento de urna, conservação e integridade referencial. |
-| `src/electoral/electoralEngine.ts` | Operacional | Matriz normativa (2018, 2022, 2024), Quociente Eleitoral, Partidário e Sobras D'Hondt com fase residual. |
-| `src/analytics/analyticalEngine.ts` | Operacional | Projeções municipais em `mart_votacao_candidato_mun`, cálculo de HHI e comparativos longitudinais. |
-| `src/sync/publisher.ts` | Operacional | Emissão de manifestos criptográficos condicionados à aprovação em auditoria. |
+| `src/db/database.ts` | Implementado; revalidação pendente | PGlite é usado como banco local; integridade e comportamento transacional precisam de testes reproduzíveis. |
+| `src/db/schema.sql` | Implementado; revalidação pendente | O esquema contém tabelas de metadados, dimensões, dados brutos e marts; constraints precisam de execução de testes. |
+| `src/db/supabase_schema.sql` | Presente; uso remoto não comprovado | A existência de DDL não comprova implantação, RLS ativa em produção ou conexão remota. |
+| `src/ingestion/pipeline.ts` | Implementado; revalidação pendente | A ingestão amostral precisa de testes de idempotência, encoding e proveniência nesta revisão. |
+| `src/integrity/integrityEngine.ts` | Implementado; revalidação pendente | A presença do motor não comprova aprovação dos testes sobre dados oficiais completos. |
+| `src/electoral/electoralEngine.ts` | Implementado; não liberado para resultados oficiais | A interface bloqueia distribuição proporcional enquanto faltarem dados completos e compatíveis da circunscrição. |
+| `src/analytics/analyticalEngine.ts` | Implementado; escopo limitado | HHI e estatísticas derivadas precisam ser interpretados apenas dentro da amostra disponível. |
+| `src/sync/publisher.ts` | Presente; publicação não revalidada | A presença do código não comprova manifesto recente ou publicação remota bem-sucedida. |
 
 ---
 
@@ -48,29 +49,22 @@ A auditoria inicial comprovou que:
 
 ---
 
-## 4. Consultas Analíticas Efetivamente Disponíveis com os Dados Carregados
+## 4. Consultas Disponíveis e Bloqueios Reais
 
-Com base na base homologada na Fase 2 (Eleições Gerais 2022 - Deputado Estadual no Rio Grande do Sul):
-1. **Filtros e Catálogo:**
-   - Eleição: `2022_1T_GERAL` (Eleições Gerais 2022 - 1º Turno).
-   - Cargo: `7` (Deputado Estadual, sistema proporcional).
-   - UF: `RS`.
-   - Municípios carregados com mapeamento TSE-IBGE: Caxias do Sul (`85995` / `4305108`), Bento Gonçalves (`85413` / `4302105`), Farroupilha (`86576` / `4307906`), Flores da Cunha (`86630` / `4308201`), Porto Alegre (`88013` / `4314902`).
-   - Candidaturas carregadas:
-     * Carlos Búrigo (MDB, SQ: 210001610488, NR: 15123)
-     * Pepe Vargas (PT / FE Brasil, SQ: 210001607812, NR: 13013)
-     * Silvana Covatti (PP, SQ: 210001611005, NR: 11122)
-     * Sergio Peres (REPUBLICANOS, SQ: 210001612450, NR: 10123)
-     * Rodrigo Lorenzoni (PL, SQ: 210001613990, NR: 22123)
-     * Pedro Westphalen (PP, SQ: 210001604991, NR: 13123)
-2. **Consultas Suportadas sem Interpolação Fictícia:**
-   - Votação nominal por candidato e município.
-   - Total de votos de legenda por partido em cada zona e município.
-   - Quociente Eleitoral e distribuição de bancadas.
-   - HHI e grau de concentração espacial do voto de cada candidato.
-   - Ranking municipal por candidato.
-   - Comparativo longitudinal com checagem de regras de comparabilidade e tratamento de denominador zero.
-   - Geração de relatório de inteligência assistido por IA via Gemini (`gemini-3.8-flash`), baseado unicamente nos dados estruturados retornados pelos motores.
+A aplicação carrega uma amostra parcial de eleições gerais de 2022 no RS, com foco em deputado estadual. A lista de municípios e candidaturas deve ser interpretada como o conteúdo presente nos arquivos amostrais, não como catálogo completo do pleito.
+
+**Consultas limitadas à amostra, sujeitas à validação dos dados:**
+- Catálogo de candidaturas e identificação de registros carregados.
+- Votos nominais e métricas territoriais derivadas dos registros presentes.
+- HHI espacial e ranking municipal, sem extrapolar para votação estadual completa.
+- Relatório determinístico com cobertura e limitações explicitadas; IA externa é opcional.
+
+**Bloqueadas ou não validadas para resultados oficiais:**
+- Quociente eleitoral estadual e distribuição de cadeiras.
+- Comparação histórica entre eleições.
+- Conclusões de elegibilidade, piso individual, sobras, bancadas ou desempenho estadual.
+- Mapa coroplético: não há malha geográfica oficial validada integrada.
+- Integridade, cobertura, reconciliação e representatividade estatística da amostra como um todo não foram revalidadas por esta revisão.
 
 ---
 
@@ -79,8 +73,8 @@ Com base na base homologada na Fase 2 (Eleições Gerais 2022 - Deputado Estadua
 | Bloqueio | Causa Raiz | Mitigação Obrigatória na Fase 3 |
 | :--- | :--- | :--- |
 | **Ausência de Geometrias SVG/GeoJSON de Municípios do RS** | O TSE não disponibiliza polígonos geográficos em seus dumps de votação; apenas tabelas tabulares. | Integrar malha cartográfica vetorial simplificada oficial dos municípios do RS com correspondência estrita por código IBGE de 7 dígitos. |
-| **Declaração de Cobertura Parcial vs Nacional** | A base testada contém amostra controlada da eleição do RS 2022. | Exibir badge permanente e avisos de escopo: "Cobertura Homologada: RS 2022 (Amostra Auditada) - 100% Factual". Jamais alegar cobertura nacional sem dados. |
-| **Ausência Potencial de GEMINI_API_KEY no Runtime** | Usuário pode não ter configurado a chave ou o provider pode estar indisponível. | Se `GEMINI_API_KEY` estiver ausente, a interface gera o relatório analítico estruturado completo com evidências determinísticas e exibe aviso formal: *"Módulo de Interpretação Textual por IA Indisponível (chave não configurada). Todas as evidências e métricas matemáticas foram calculadas com rigor determinístico."* |
+| **Declaração de Cobertura Parcial vs Nacional** | A base contém amostra parcial do RS em 2022. | Informar claramente o recorte e a ausência de cobertura estadual/nacional comprovada. Não usar rótulos como "100% factual" ou "amostra auditada" sem evidência verificável. |
+| **Ausência Potencial de GEMINI_API_KEY no Runtime** | A chave pode estar ausente ou o provedor indisponível. | Gerar relatório determinístico com escopo amostral explícito; não afirmar que todos os dados foram auditados ou que métricas representam o estado inteiro. |
 
 ---
 
@@ -103,9 +97,10 @@ Após a interrupção do agente por limite de cota, foi feita revisão direta do
 ### Estado de validação após as correções
 
 - **Código:** alterações gravadas na `main` em commits sequenciais.
-- **Build, TypeScript e testes:** não executados por esta revisão via GitHub; estado **não verificado**.
+- **CI (TypeScript, build e testes de salvaguarda):** aprovada no GitHub Actions para o commit `25ed641d7911b7411e5053a48699d542f6f653a7`; execução: https://github.com/Tokenizaa/IE-electoral-Inteligence/actions/runs/37977341704.
+- **Escopo dessa CI:** valida tipagem, build de produção e a suíte `tests/phase3_interface.test.ts`; não comprova cobertura eleitoral completa, reconciliação oficial ou validade científica de todos os indicadores.
 - **Cobertura eleitoral:** permanece amostra parcial do RS em 2022, sem evidência de representatividade estatística ou cobertura estadual completa.
 - **Geometria territorial:** indisponível; nenhum polígono esquemático deve ser apresentado como mapa oficial.
 - **Comparações históricas e distribuição de cadeiras:** bloqueadas até ingestão e validação de dados compatíveis.
-- **Fase 3:** **não concluída**. As correções reduzem resultados fabricados, mas a integração e a validação funcional ainda precisam ser executadas num ambiente com dependências instaladas.
+- **Fase 3:** **não concluída**. Build e testes básicos passam, mas ainda faltam validação funcional mais ampla, reconciliação independente com fontes oficiais e fechamento dos bloqueios metodológicos.
 

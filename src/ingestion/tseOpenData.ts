@@ -197,15 +197,25 @@ function isAllowedTseUrl(rawUrl: string): boolean {
   }
 }
 
-function isYearInPackage(pkg: CkanPackage, year: number): boolean {
-  const indexedMetadata = [
-    pkg.title,
-    pkg.name,
-    pkg.notes,
-    ...(pkg.resources ?? []).flatMap(resource => [resource.name, resource.description])
-  ].filter(Boolean).join(' ');
-  const searchableText = normalized(indexedMetadata);
+function containsElectionYear(values: Array<string | undefined>, year: number): boolean {
+  const searchableText = normalized(values.filter(Boolean).join(' '));
   return new RegExp(`(^|[^0-9])${year}([^0-9]|$)`).test(searchableText);
+}
+
+function isYearInPackage(pkg: CkanPackage, year: number): boolean {
+  // Package title/name can scope every resource when the package itself is year-specific.
+  // Otherwise, at least one resource must explicitly identify the year.
+  return containsElectionYear([pkg.title, pkg.name], year) ||
+    (pkg.resources ?? []).some(resource =>
+      containsElectionYear([resource.name, resource.description], year)
+    );
+}
+
+function isResourceForYear(pkg: CkanPackage, resource: CkanResource, year: number): boolean {
+  if (containsElectionYear([pkg.title, pkg.name], year)) return true;
+  // A generic package can contain multiple years; do not infer a resource's year
+  // from package notes or from a different resource in the same package.
+  return containsElectionYear([resource.name, resource.description], year);
 }
 
 export class TseOpenDataClient {
@@ -253,6 +263,7 @@ export class TseOpenDataClient {
     const resources: TseCatalogResource[] = [];
     for (const pkg of packages) {
       for (const resource of pkg.resources ?? []) {
+        if (!isResourceForYear(pkg, resource, year)) continue;
         const url = String(resource.url ?? '');
         if (!resource.id || !url || !isAllowedTseUrl(url)) continue;
         const resourceKind = classifyResource(
@@ -315,8 +326,8 @@ export class TseOpenDataClient {
       throw new Error('Ano eleitoral inválido.');
     }
     const { resource, pkg } = await this.getResource(resourceId);
-    if (!isYearInPackage(pkg, year)) {
-      throw new Error(`O recurso pertence ao conjunto "${pkg.title ?? pkg.name}", que não foi identificado como eleição de ${year}.`);
+    if (!isResourceForYear(pkg, resource, year)) {
+      throw new Error(`O recurso não foi identificado individualmente como pertencente à eleição de ${year}; download bloqueado para evitar mistura de anos.`);
     }
     const url = String(resource.url);
     const response = await this.fetchTseDownload(url);

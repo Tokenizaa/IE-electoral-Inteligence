@@ -99,6 +99,19 @@ Após a interrupção do agente por limite de cota, foi feita revisão direta do
 | Percentual municipal e métricas partidárias pareciam representar votos válidos/total oficial, embora o CSV contenha apenas candidaturas selecionadas e votos de legenda parciais. | Campo renomeado para `pct_sobre_registros_amostra_mun`; interface e exportação identificam os valores como participação nos registros amostrais, e a visão partidária avisa que não representa total oficial nem dependência real da legenda. | Força eleitoral municipal e composição total de cada partido permanecem indisponíveis sem dados completos de todas as candidaturas e votos válidos.
 | Colunas `total_votos_estado` e `pct_votos_validos_estado` guardavam valores derivados da amostra. | Esquema e motor renomeados para `total_votos_amostra` e `pct_votos_validos_amostra`. | Mudança adequada ao banco local criado em memória; qualquer banco persistente preexistente exigiria migração explícita. |
 
+### Novo mecanismo de descoberta e aquisição dinâmica do TSE — 2026-10-09
+
+Foi implementada uma primeira camada reutilizável de aquisição de fontes, sem fixar a plataforma em um único ano ou arquivo:
+
+- `src/ingestion/tseOpenData.ts` consulta a API CKAN do Portal de Dados Abertos do TSE em tempo de execução, pesquisa por ano e classifica recursos pelo nome/descrição publicados.
+- A aba **Fontes TSE** permite selecionar ano, tipo de arquivo, filtrar resultados e iniciar o download de um recurso do catálogo.
+- `GET /api/tse/catalog?year=2022` lista recursos; `POST /api/tse/download` recebe o identificador do recurso do CKAN e o ano selecionado. A API não aceita uma URL arbitrária fornecida pelo cliente.
+- Os downloads são guardados em `var/tse-downloads/<ano>/`, ignorados pelo Git, com manifesto JSON contendo URL oficial, metadados, tamanho e SHA-256.
+- Há limite de tamanho configurável (2 GiB por padrão), verificação do host oficial HTTPS em cada redirecionamento, bloqueio de HTML/JSON de erro disfarçado de CSV e validação inicial da assinatura ZIP/cabeçalho tabular.
+- A classificação de recurso é heurística. Arquivos de votação podem incluir múltiplos cargos, e o campo `CD_CARGO` precisa ser interpretado a partir do layout de cada ano/arquivo.
+
+**Limite crítico:** essa primeira entrega descobre e baixa arquivos brutos; ela ainda não os incorpora automaticamente às tabelas analíticas nem afirma que o arquivo esteja completo ou autenticado pelo TSE. O estado de validação do manifesto é `DOWNLOADED_HASHED_LAYOUT_REVIEW_REQUIRED`. A próxima fase deve criar adaptadores versionados por tipo/layout/ano, extrair o catálogo real de cargos e turnos, validar os totais com os arquivos de totalização correspondentes e só então publicar um lote como elegível para análise.
+
 ### Estado de validação após as correções
 
 - **Código:** alterações gravadas na `main` em commits sequenciais.

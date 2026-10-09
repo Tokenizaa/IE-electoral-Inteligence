@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { createHash } from 'node:crypto';
 import { ElectoralDatabase } from '../db/database.ts';
 
 export interface CandidateHHIReport {
@@ -109,7 +110,7 @@ export class AnalyticalEngine {
   /**
    * Calcula o Índice de Herfindahl-Hirschman (HHI) de Concentração Espacial do Candidato
    */
-  public async computeCandidateHHI(idEleicao: string, sqCandidato: number, cdCargo: number, manifestSha256: string = 'SHA256_VERIFIED'): Promise<CandidateHHIReport> {
+  public async computeCandidateHHI(idEleicao: string, sqCandidato: number, cdCargo: number): Promise<CandidateHHIReport> {
     await this.projectCandidateMunicipalVotes(idEleicao, sqCandidato);
 
     const rows = await this.db.query<{
@@ -160,6 +161,24 @@ export class AnalyticalEngine {
     );
     const totalValidosEstado = Number(stateValidos[0]?.total || 1);
     const pctEstado = Number(((totalVotos / totalValidosEstado) * 100).toFixed(4));
+
+    // Hash real e reproduzível do manifesto das fontes efetivamente registradas.
+    // Isto identifica os arquivos amostrais ingeridos; não certifica cobertura estadual/nacional.
+    const sourceRows = await this.db.query<{ nome_arquivo: string; hash_sha256: string }>(
+      `SELECT nome_arquivo, hash_sha256
+       FROM meta_fontes_tse
+       WHERE ano_eleicao = (SELECT ano_eleicao FROM dim_eleicao WHERE id_eleicao = $1)
+         AND sg_uf = 'RS'
+       ORDER BY nome_arquivo, hash_sha256`,
+      [idEleicao]
+    );
+    if (sourceRows.length === 0 || sourceRows.some(row => !/^[a-f0-9]{64}$/i.test(row.hash_sha256))) {
+      throw new Error('Não é possível calcular o HHI sem hashes SHA-256 válidos das fontes ingeridas.');
+    }
+    const manifestContent = sourceRows
+      .map(row => `${row.nome_arquivo.trim()}:${row.hash_sha256.trim().toLowerCase()}`)
+      .join('\\n');
+    const manifestSha256 = createHash('sha256').update(manifestContent, 'utf8').digest('hex');
 
     const idIndicador = `HHI_${idEleicao}_${sqCandidato}`;
 

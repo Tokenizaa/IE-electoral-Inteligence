@@ -152,20 +152,20 @@ export const TerritoryTab: React.FC<TerritoryTabProps> = ({
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-semibold text-white flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-indigo-400" />
-                Mapa Coroplético Vetorial (Serra Gaúcha & Região Metropolitana)
+                Mapa territorial
               </span>
               <span className="text-[10px] font-mono text-slate-400 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
-                Coordenadas Cartográficas Oficiais
+                Malha não validada
               </span>
             </div>
             <p className="text-[11px] text-slate-400">
-              Passe o mouse ou clique sobre qualquer município para inspecionar os números apurados pelo TSE.
+              A visualização cartográfica depende da integração de uma malha oficial validada.
             </p>
           </div>
 
           {/* SVG Map Canvas */}
           <div className="my-4 relative bg-slate-950 rounded-xl border border-slate-800/80 p-4 flex items-center justify-center overflow-hidden">
-            <svg
+            {RS_MUNICIPALITIES_GEO.length === 0 ? <div className="w-full max-w-[420px] min-h-[260px] flex items-center justify-center text-center p-6 text-sm text-amber-200 border border-amber-800/60 rounded-lg bg-amber-950/30">Malha geográfica oficial indisponível. Nenhum polígono esquemático será exibido como cartografia real.</div> : <svg
               viewBox="100 80 340 400"
               className="w-full max-w-[420px] h-auto drop-shadow-lg cursor-pointer"
             >
@@ -201,7 +201,7 @@ export const TerritoryTab: React.FC<TerritoryTabProps> = ({
                   </g>
                 );
               })}
-            </svg>
+            </svg>}
 
             {/* Floating Legend */}
             <div className="absolute bottom-3 left-3 bg-slate-900/90 backdrop-blur p-2.5 rounded-lg border border-slate-800 text-[10px] space-y-1">
@@ -222,8 +222,8 @@ export const TerritoryTab: React.FC<TerritoryTabProps> = ({
           </div>
 
           <div className="text-[10px] text-slate-500 flex items-center justify-between">
-            <span>Fonte Cartográfica: Base Territorial Integrada IBGE / TSE</span>
-            <span>Sistema Geodésico SIRGAS 2000</span>
+            <span>Fonte cartográfica: pendente de integração e validação</span>
+            <span>Sistema geodésico: não validado</span>
           </div>
         </div>
 

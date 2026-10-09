@@ -233,13 +233,24 @@ export const InvestigationTab: React.FC<InvestigationTabProps> = ({
               </div>
 
               <div className="p-3 rounded-lg bg-slate-950 border border-slate-800">
-                <div className="text-[10px] font-mono uppercase text-amber-400">Piso Individual (10% QE)</div>
-                <div className="text-lg font-bold text-amber-300 mt-0.5">
-                  {(analysis.quociente_eleitoral_estado * 0.1).toLocaleString()}
-                </div>
-                <div className="text-[10px] text-emerald-400 mt-0.5">
-                  Superado com folga ({analysis.total_votos_amostra.toLocaleString()} votos)
-                </div>
+                <div className="text-[10px] font-mono uppercase text-amber-400">Piso individual (10% do QE)</div>
+                {analysis.quociente_eleitoral_estado == null ? (
+                  <>
+                    <div className="text-sm font-bold text-amber-300 mt-1">Indisponível</div>
+                    <div className="text-[10px] text-slate-400 mt-1">
+                      Exige votação válida completa da circunscrição; não pode ser inferido da amostra.
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-lg font-bold text-amber-300 mt-0.5">
+                      {(analysis.quociente_eleitoral_estado * 0.1).toLocaleString()}
+                    </div>
+                    <div className="text-[10px] text-slate-400 mt-1">
+                      Referência aritmética; a aplicação depende das regras vigentes para a eleição.
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>

@@ -100,3 +100,20 @@ Para dar início à **Fase 2 (Modelagem Física de Dados e Pipeline de Ingestão
 - [ ] **Marco 2.5:** Implementação dos parsers de streaming de CSV de alta performance com normalização de codificação e tipagem estrita.
 - [ ] **Marco 2.6:** Implementação do motor de validação aritmética (os 4 testes canônicos) antes da promoção de dados para o Data Mart.
 - [ ] **Marco 2.7:** Publicação das primeiras projeções harmonizadas (iniciando pelo Rio Grande do Sul - 2018/2022/2024 como benchmark antes da expansão nacional).
+
+---
+
+## 4. Adendo de governança — Fase 1 permanece aberta
+
+**Status vinculante: NÃO APROVADA para início da Fase 2.** As respostas canônicas e o checklist acima são propostas de especificação; sua existência no documento não prova que as fontes foram verificadas, que as chaves foram testadas, que fórmulas estão normativamente corretas ou que a arquitetura foi validada. Este adendo prevalece sobre qualquer texto anterior que declare a Fase 1 concluída, homologada ou apta para transição.
+
+### Bloqueios obrigatórios antes de qualquer implementação da Fase 2
+- [ ] **B1 — Fontes:** matriz de evidência por dataset/ano/UF com URLs oficiais diretas, metadados, layouts, campos, encoding e hash do arquivo real.
+- [ ] **B2 — Granularidade e chaves:** perfil de arquivos reais, chaves candidatas testadas, duplicidades explicadas e separação entre seção, agregados oficiais e agregados derivados.
+- [ ] **B3 — Regras eleitorais:** matriz legal versionada por pleito/cargo/circunscrição, incluindo alterações legislativas, decisões judiciais, elegibilidade, quocientes, sobras e desempates; revisão jurídica/metodológica documentada.
+- [ ] **B4 — Identidade histórica:** política de resolução de pessoas sem fusão automática baseada apenas em nome/dados aproximados; tratamento de ambiguidade e trilha de evidências.
+- [ ] **B5 — Integridade:** equações condicionadas ao universo e layout, exemplos de referência e divergências classificadas sem correção silenciosa.
+- [ ] **B6 — Arquitetura:** contrato de publicação, idempotência, retomada, retotalização, recuperação, segurança e benchmark com critérios objetivos.
+- [ ] **B7 — Governança:** revisão independente do diff e aprovação explícita do responsável pelo produto.
+
+O encerramento destes bloqueios exige evidências anexadas ou ligadas à documentação e revisão dos resultados; não basta marcar caixas ou alterar textos. Até lá, não criar migrations/tabelas, ingestores, pipelines de carga, métricas implementadas ou conexões de banco. A correção documental não autoriza por si só a Fase 2.

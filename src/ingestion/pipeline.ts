@@ -32,7 +32,7 @@ export class IngestionPipeline {
         ano_eleicao, sg_uf, tipo_conteudo, hash_sha256, tamanho_bytes,
         status_verificacao
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-      ON CONFLICT (id_fonte) DO UPDATE SET status_verificacao = 'REPROCESSADO'`,
+      ON CONFLICT (id_fonte) DO UPDATE SET status_verificacao = 'HASH_LOCAL_CALCULADO'`,
       [
         idFonte,
         filePath.split('/').pop() || 'unknown.csv',
@@ -44,7 +44,7 @@ export class IngestionPipeline {
         layout.tipo_detectado,
         sha256,
         stats.size,
-        'VERIFICADO'
+        'HASH_LOCAL_CALCULADO'
       ]
     );
 

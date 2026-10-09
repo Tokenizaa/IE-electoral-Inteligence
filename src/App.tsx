@@ -72,14 +72,14 @@ export default function App() {
       <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-indigo-950 border-b border-emerald-800/40 px-4 py-2 text-xs flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span className="font-semibold text-emerald-300">FASE 1: FUNDAÇÃO CIENTÍFICA E ARQUITETURAL CONCLUÍDA</span>
+          <span className="font-semibold text-emerald-300">FASE 1: EM REVISÃO METODOLÓGICA</span>
           <span className="text-slate-400">|</span>
-          <span className="text-slate-300">Repositório: <code className="text-emerald-400 bg-slate-900/80 px-1 py-0.5 rounded">Tokenizaa/Deputado-Carlos-Burigo</code></span>
+          <span className="text-slate-300">Repositório: <code className="text-emerald-400 bg-slate-900/80 px-1 py-0.5 rounded">Tokenizaa/IE-electoral-Inteligence</code></span>
         </div>
         <div className="flex items-center gap-3 text-slate-400">
           <span>8 Cadernos Canônicos em <code className="text-indigo-300 bg-slate-900/80 px-1 py-0.5 rounded">/docs</code></span>
           <span className="text-slate-400">|</span>
-          <span className="text-emerald-300 font-medium">Apto para Transição à Fase 2</span>
+          <span className="text-emerald-300 font-medium">Fase 2 bloqueada até aprovação explícita</span>
         </div>
       </div>
 
@@ -151,7 +151,7 @@ export default function App() {
               <div className="max-w-3xl space-y-3">
                 <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium">
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  Fase 1 Concluída: 100% dos Requisitos Fundacionais Especificados
+                  Fase 1 em revisão: bloqueios metodológicos pendentes
                 </div>
                 <h2 className="text-2xl font-bold text-white tracking-tight">
                   Fundação Científica e Arquitetural da Inteligência Eleitoral
@@ -188,11 +188,11 @@ export default function App() {
                     As 7 Respostas Canônicas sem Ambiguidade (Critérios de Aceite da Fase 1)
                   </h3>
                   <p className="text-xs text-slate-400">
-                    Respostas formais que validam o fechamento da Fase 1 e autorizam o início da Fase 2.
+                    Respostas de especificação em revisão; não representam aprovação nem autorizam a Fase 2.
                   </p>
                 </div>
                 <span className="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded border border-emerald-500/20">
-                  7 de 7 Critérios Atendidos
+                  Critérios aguardando validação independente
                 </span>
               </div>
 
@@ -888,7 +888,7 @@ export default function App() {
                       <div className="text-[11px] text-slate-400 mt-0.5">{item.desc}</div>
                     </div>
                     <span className="text-[11px] font-mono text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-900/40">
-                      Pronto para Execução
+                      Bloqueado para revisão
                     </span>
                   </div>
                 ))}
@@ -908,7 +908,7 @@ export default function App() {
           <div className="flex items-center gap-3 font-mono text-[11px] text-slate-400">
             <span>Docs em <code>/docs/*.md</code></span>
             <span>•</span>
-            <span className="text-emerald-400 font-semibold">Fase 1 100% Homologada</span>
+            <span className="text-emerald-400 font-semibold">Fase 1 NÃO homologada</span>
           </div>
         </div>
       </footer>

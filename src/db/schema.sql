@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS meta_fontes_tse (
     hash_sha256 CHAR(64) NOT NULL,
     tamanho_bytes BIGINT NOT NULL CHECK (tamanho_bytes >= 0),
     data_download TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    status_verificacao VARCHAR(32) NOT NULL DEFAULT 'VERIFICADO',
+    status_verificacao VARCHAR(32) NOT NULL DEFAULT 'HASH_LOCAL_CALCULADO',
     observacoes TEXT
 );
 

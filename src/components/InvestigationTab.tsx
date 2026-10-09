@@ -226,7 +226,7 @@ export const InvestigationTab: React.FC<InvestigationTabProps> = ({
               </div>
 
               <div className="p-3 rounded-lg bg-slate-950 border border-slate-800">
-                <div className="text-[10px] font-mono uppercase text-emerald-400">Maior Reduto Eleitoral</div>
+                <div className="text-[10px] font-mono uppercase text-emerald-400">Maior volume observado</div>
                 <div className="text-lg font-bold text-emerald-300 mt-0.5">
                   {analysis.maior_reduto_nome}
                 </div>
@@ -284,7 +284,7 @@ export const InvestigationTab: React.FC<InvestigationTabProps> = ({
                     <th className="py-2.5 px-3 text-right">Votos Nominais</th>
                     <th className="py-2.5 px-3 text-right">Participação na amostra municipal (%)</th>
                     <th className="py-2.5 px-3 text-right">% do Candidato</th>
-                    <th className="py-2.5 px-3 text-center">Posição Local</th>
+                    <th className="py-2.5 px-3 text-center">Posição entre candidaturas da amostra</th>
                     <th className="py-2.5 px-3 font-mono">Código IBGE</th>
                   </tr>
                 </thead>

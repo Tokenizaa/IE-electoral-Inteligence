@@ -8,6 +8,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { DataService } from './src/services/dataService.ts';
 import { TseOpenDataClient, type TseResourceKind } from './src/ingestion/tseOpenData.ts';
+import { validateTseLayout } from './src/ingestion/tseLayoutRegistry.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -88,6 +89,32 @@ async function startServer() {
       res.json(await tseOpenData.inspectDownloadedResource(resourceId, year));
     } catch (err: any) {
       const message = String(err?.message ?? 'Falha ao inspecionar o arquivo TSE.');
+      const status = /inválido|não encontrado|exige CSV|não contém a coluna|fora do diretório/i.test(message) ? 400 : 422;
+      res.status(status).json({ error: message });
+    }
+  });
+
+  // Validate the inspected header against versioned, sample-only layout profiles.
+  // A positive structural match never authorizes ingestion into the analytical model.
+  app.post('/api/tse/validate-layout', async (req, res) => {
+    const resourceId = String(req.body?.resource_id ?? '');
+    const year = Number.parseInt(String(req.body?.year ?? ''), 10);
+    if (!resourceId || !Number.isInteger(year)) {
+      return res.status(400).json({ error: 'Informe resource_id e year do catálogo do TSE.' });
+    }
+    try {
+      const inspection = await tseOpenData.inspectDownloadedResource(resourceId, year);
+      const supportedKinds = [
+        'CANDIDATURAS',
+        'VOTACAO_NOMINAL_MUNICIPIO_ZONA',
+        'DETALHE_APURACAO_MUNICIPIO_ZONA'
+      ] as const;
+      const kind = supportedKinds.includes(inspection.detected_kind as typeof supportedKinds[number])
+        ? inspection.detected_kind as typeof supportedKinds[number]
+        : 'OUTRO';
+      res.json(validateTseLayout(inspection.year, kind, inspection.layout_columns));
+    } catch (err: any) {
+      const message = String(err?.message ?? 'Falha ao validar o layout TSE.');
       const status = /inválido|não encontrado|exige CSV|não contém a coluna|fora do diretório/i.test(message) ? 400 : 422;
       res.status(status).json({ error: message });
     }

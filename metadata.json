@@ -1,0 +1,6 @@
+{
+  "name": "Inteligência Eleitoral - Fundação Científica e Arquitetural",
+  "description": "Especificação canônica, metodologia científica, catálogo de dados TSE, modelo conceitual e arquitetura analítica de inteligência eleitoral.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

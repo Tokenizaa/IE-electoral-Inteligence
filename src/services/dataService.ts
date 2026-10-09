@@ -238,7 +238,8 @@ export class DataService {
       share_t2: deltaReport.share_t2,
       delta_share_pp: deltaReport.delta_share_pontos_percentuais,
       ressalvas_metodologicas: deltaReport.ressalvas_comparabilidade,
-      comparacao_valida: true
+      comparacao_valida: false,
+      motivo_bloqueio: 'Cálculo aritmético disponível, mas a comparabilidade histórica não foi comprovada por bases oficiais compatíveis.'
     };
   }
 
@@ -275,16 +276,16 @@ export class DataService {
         timestamp: new Date().toISOString(),
         modelo_ia_utilizado: 'Nenhum (Modo Determinístico com Validação Aritmética)',
         status_ia: 'IA_INDISPONIVEL_RELATORIO_DETERMINISTICO',
-        resumo_executivo: `O candidato ${analysis.candidate.nm_urna_candidato} (${analysis.candidate.sg_partido}) obteve ${analysis.total_votos_amostra.toLocaleString()} votos nominais na base homologada. Seu padrão territorial é formalmente classificado como "${analysis.classificacao_espacial}" com Índice HHI de ${analysis.hhi_concentracao}.`,
-        diagnostico_territorial: `O principal reduto eleitoral foi o município de ${analysis.maior_reduto_nome}, que concentrou ${analysis.pct_maior_reduto}% de todos os votos nominais do candidato (${evidenceBundle.top_municipios[0]?.votos.toLocaleString()} votos). O candidato alcançou o ranking #${evidenceBundle.top_municipios[0]?.ranking} no município.`,
-        analise_institucional: `No âmbito do sistema proporcional da eleição geral de 2022 (cargo de ${analysis.candidate.ds_cargo}), a candidatura superou a cláusula de desempenho individual (10% do QE de 32.540 votos = 3.254 votos).`,
+        resumo_executivo: `O candidato ${analysis.candidate.nm_urna_candidato} (${analysis.candidate.sg_partido}) obteve ${analysis.total_votos_amostra.toLocaleString()} votos nominais nos registros da amostra carregada; esse total não representa a votação estadual completa. Seu padrão territorial é formalmente classificado como "${analysis.classificacao_espacial}" com Índice HHI de ${analysis.hhi_concentracao}.`,
+        diagnostico_territorial: `Na amostra disponível, o município com maior volume registrado foi ${analysis.maior_reduto_nome}, com ${analysis.pct_maior_reduto}% dos votos do candidato observados na própria amostra (${evidenceBundle.top_municipios[0]?.votos.toLocaleString()} votos). O candidato alcançou o ranking #${evidenceBundle.top_municipios[0]?.ranking} no município.`,
+        analise_institucional: `Não é possível avaliar a elegibilidade proporcional nem a superação do quociente eleitoral com esta amostra municipal parcial; o QE estadual e a votação completa da circunscrição não estão disponíveis.`,
         evidencias_vinculadas: evidenceBundle,
         limitacoes_e_epistemologia: [
-          'Este relatório é fundamentado exclusivamente em números reais do Boletim de Urna oficial do TSE.',
-          'Módulo de IA em modo de contingência por ausência de chave de API externa. Nenhum número foi inventado ou aproximado.',
+          'O relatório utiliza os registros presentes nos arquivos amostrais derivados de dados do TSE; cobertura estadual completa não foi demonstrada.',
+          'Módulo de IA em modo determinístico por ausência de chave de API externa.',
           'A concentração espacial dos votos não infere causas demográficas sem teste quasi-experimental.'
         ],
-        conclusao_proporcional: `A candidatura apresenta forte ancoragem espacial na Serra Gaúcha, dependendo de Caxias do Sul para a maior parte de sua sustentação eleitoral.`,
+        conclusao_proporcional: `Na amostra carregada, os votos observados estão territorialmente distribuídos conforme a tabela apresentada; não é possível concluir dependência eleitoral estadual sem cobertura completa.`,
         provencancia_arquivos: [
           'votacao_candidato_munzona_2022_RS_sample.csv',
           'consulta_cand_2022_RS_sample.csv',
@@ -344,12 +345,12 @@ Responda em formato JSON estrito com as seguintes chaves:
         timestamp: new Date().toISOString(),
         modelo_ia_utilizado: 'gemini-3.8-flash (Grounded via @google/genai)',
         status_ia: 'GERADO_COM_SUCESSO',
-        resumo_executivo: parsedText.resumo_executivo || `Análise de desempenho eleitoral de ${analysis.candidate.nm_urna_candidato}.`,
+        resumo_executivo: parsedText.resumo_executivo || `Análise limitada aos registros amostrais disponíveis para ${analysis.candidate.nm_urna_candidato}.`,
         diagnostico_territorial: parsedText.diagnostico_territorial || `Votação concentrada em ${analysis.maior_reduto_nome}.`,
-        analise_institucional: parsedText.analise_institucional || `Desempenho sob quociente de 32.540 votos.`,
+        analise_institucional: parsedText.analise_institucional || `Quociente eleitoral: não disponível para esta amostra.`,
         evidencias_vinculadas: evidenceBundle,
         limitacoes_e_epistemologia: [
-          'Interpretação redigida por modelo de IA ancorada 100% nas evidências oficiais auditadas do TSE.',
+          'Interpretação gerada a partir das evidências estruturadas presentes na amostra; a cobertura deve ser considerada limitada.',
           'Correlação espacial observada não constitui prova de causalidade sociológica.',
           'Números conferidos matematicamente pelo motor analítico da Fase 2.'
         ],
@@ -370,7 +371,7 @@ Responda em formato JSON estrito com as seguintes chaves:
         status_ia: 'IA_INDISPONIVEL_RELATORIO_DETERMINISTICO',
         resumo_executivo: `O candidato ${analysis.candidate.nm_urna_candidato} (${analysis.candidate.sg_partido}) obteve ${analysis.total_votos_amostra.toLocaleString()} votos nominais na base homologada. Classificação espacial: "${analysis.classificacao_espacial}" com HHI de ${analysis.hhi_concentracao}.`,
         diagnostico_territorial: `O principal reduto eleitoral foi ${analysis.maior_reduto_nome}, com ${analysis.pct_maior_reduto}% de todos os votos nominais do candidato (${evidenceBundle.top_municipios[0]?.votos.toLocaleString()} votos).`,
-        analise_institucional: `No sistema proporcional de 2022 (${analysis.candidate.ds_cargo}), a candidatura superou o piso de 10% do QE de 32.540 votos.`,
+        analise_institucional: `Não é possível verificar o piso individual do QE: a amostra não contém a votação estadual completa necessária.`,
         evidencias_vinculadas: evidenceBundle,
         limitacoes_e_epistemologia: [
           'Fallback determinístico acionado por indisponibilidade momentânea da API externa.',

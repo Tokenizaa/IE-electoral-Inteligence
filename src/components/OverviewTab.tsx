@@ -30,7 +30,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ onNavigateTab }) => {
         <div className="max-w-3xl space-y-3">
           <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium">
             <CheckCircle2 className="w-3.5 h-3.5" />
-            Fase 3 Ativa: Interface Analítica Integrada aos Motores Determinísticos
+            Interface analítica — cobertura parcial em validação
           </div>
           <h2 className="text-2xl font-bold text-white tracking-tight">
             Plataforma Inteligência Eleitoral — Ambiente de Investigação Científica
@@ -71,7 +71,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ onNavigateTab }) => {
             Amostra representativa auditada do Rio Grande do Sul: Caxias do Sul, Bento Gonçalves, Farroupilha, Flores da Cunha e Porto Alegre.
           </p>
           <div className="text-[10px] text-emerald-400 font-mono font-semibold pt-1">
-            ✓ 100% Factual • Sem Números Inventados
+            Cobertura parcial • validação cartográfica pendente
           </div>
         </div>
 
@@ -85,7 +85,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ onNavigateTab }) => {
             Storage relacional local com integridade referencial ativa, esquemas separados (meta, dim, raw, mart) e idempotência atestada.
           </p>
           <div className="text-[10px] text-emerald-400 font-mono font-semibold pt-1">
-            ✓ 4 Testes de Fechamento Aprovados
+            Consulte as evidências verificadas
           </div>
         </div>
 
@@ -94,12 +94,12 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ onNavigateTab }) => {
             <span>PROVEDOR DE IA</span>
             <Binary className="w-4 h-4 text-purple-400" />
           </div>
-          <div className="text-base font-bold text-white">Gemini 3.8 Flash (Server-Side)</div>
+          <div className="text-base font-bold text-white">IA opcional (Server-Side)</div>
           <p className="text-[11px] text-slate-400 leading-relaxed">
             Geração de diagnósticos via @google/genai com prompt anti-alucinação rígido e fallback determinístico imediato.
           </p>
           <div className="text-[10px] text-purple-400 font-mono font-semibold pt-1">
-            ✓ 5 Leis da IA Ativas
+            Disponibilidade depende de credenciais
           </div>
         </div>
       </div>
@@ -113,11 +113,11 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ onNavigateTab }) => {
               Auditoria de Fechamento Aritmético e Integridade Semântica (Fase 2)
             </h3>
             <p className="text-[11px] text-slate-400">
-              Todos os dados disponíveis nesta interface passaram previamente pelos 4 testes canônicos de conservação matemática.
+              A cobertura de testes deve ser confirmada por execução no ambiente atual; a amostra não representa todo o RS.
             </p>
           </div>
           <span className="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-            Status: APROVADO
+            Status: verificar evidências
           </span>
         </div>
 
@@ -146,7 +146,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ onNavigateTab }) => {
               <span>PASS</span>
             </div>
             <div className="font-semibold text-white text-xs">Território TSE x IBGE</div>
-            <p className="text-[11px] text-slate-400 mt-0.5">100% dos municípios vinculados por códigos oficiais de 7 dígitos.</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">Vínculos territoriais devem ser validados por códigos oficiais.</p>
           </div>
 
           <div className="p-3 rounded-lg bg-slate-950 border border-slate-800">

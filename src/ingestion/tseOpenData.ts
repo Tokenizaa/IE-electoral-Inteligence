@@ -1,0 +1,379 @@
+/**
+ * Discover and download election datasets from the official TSE Open Data CKAN API.
+ *
+ * Discovery is dynamic: dataset/resource names are read from the portal at request time.
+ * Downloads are retained as raw source artifacts and are not silently promoted into
+ * the analytical model. A separate, versioned adapter must validate each layout first.
+ */
+import { createHash, randomUUID } from 'node:crypto';
+import { createWriteStream } from 'node:fs';
+import { mkdir, rename, rm, stat, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { Readable, Transform } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
+
+const CKAN_API = 'https://dadosabertos.tse.jus.br/api/3/action';
+const DEFAULT_DOWNLOAD_DIR = path.resolve(process.cwd(), 'var/tse-downloads');
+const MAX_METADATA_BYTES = 2_000_000;
+const DEFAULT_MAX_DOWNLOAD_BYTES = 2 * 1024 * 1024 * 1024;
+
+export type TseResourceKind =
+  | 'CANDIDATURAS'
+  | 'VOTACAO_NOMINAL_MUNICIPIO_ZONA'
+  | 'VOTACAO_PARTIDO_MUNICIPIO_ZONA'
+  | 'DETALHE_APURACAO_MUNICIPIO_ZONA'
+  | 'DETALHE_APURACAO_SECAO'
+  | 'BOLETIM_URNA'
+  | 'OUTRO';
+
+export interface TseCatalogResource {
+  id: string;
+  name: string;
+  description: string;
+  format: string;
+  url: string;
+  size_bytes: number | null;
+  kind: TseResourceKind;
+  package_id: string;
+  package_name: string;
+  package_title: string;
+  package_modified: string | null;
+}
+
+export interface TseCatalogResult {
+  source: 'Portal de Dados Abertos do TSE (CKAN API)';
+  year: number;
+  query: string;
+  dataset_count: number;
+  resource_count: number;
+  resources: TseCatalogResource[];
+  limitations: string[];
+}
+
+interface CkanResource {
+  id?: string;
+  name?: string;
+  description?: string;
+  format?: string;
+  url?: string;
+  size?: number | string | null;
+  package_id?: string;
+  last_modified?: string | null;
+  created?: string | null;
+}
+
+interface CkanPackage {
+  id?: string;
+  name?: string;
+  title?: string;
+  notes?: string;
+  metadata_modified?: string;
+  resources?: CkanResource[];
+}
+
+interface CkanEnvelope<T> {
+  success: boolean;
+  result: T;
+  error?: { message?: string };
+}
+
+export interface TseDownloadManifest {
+  source: 'Portal de Dados Abertos do TSE';
+  resource_id: string;
+  dataset_id: string;
+  dataset_title: string;
+  resource_name: string;
+  resource_url: string;
+  requested_year: number;
+  detected_kind: TseResourceKind;
+  format: string;
+  size_bytes: number;
+  sha256: string;
+  downloaded_at: string;
+  validation_status: 'DOWNLOADED_HASHED_LAYOUT_REVIEW_REQUIRED';
+  validation: {
+    extension_matches_format: boolean;
+    signature_valid: boolean | null;
+    csv_header: string[] | null;
+    notes: string[];
+  };
+  local_file: string;
+}
+
+export interface TseOpenDataOptions {
+  fetchImpl?: typeof fetch;
+  downloadDir?: string;
+  maxDownloadBytes?: number;
+}
+
+function normalized(value: unknown): string {
+  return String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
+}
+
+function classifyResource(name: string, description: string, format: string): TseResourceKind {
+  const text = normalized(`${name} ${description}`);
+  if (/CANDIDATOS|CANDIDATURAS|CONSULTA POR CANDIDATO/.test(text)) return 'CANDIDATURAS';
+  if (/VOTACAO NOMINAL.*MUNICIPIO.*ZONA/.test(text)) return 'VOTACAO_NOMINAL_MUNICIPIO_ZONA';
+  if (/VOTACAO EM PARTIDO|VOTACAO PARTIDO/.test(text) && /MUNICIPIO|ZONA/.test(text)) return 'VOTACAO_PARTIDO_MUNICIPIO_ZONA';
+  if (/DETALHE DA APURACAO.*SECAO/.test(text)) return 'DETALHE_APURACAO_SECAO';
+  if (/DETALHE DA APURACAO/.test(text)) return 'DETALHE_APURACAO_MUNICIPIO_ZONA';
+  if (/BOLETIM DE URNA/.test(text) || normalized(format) === 'BU') return 'BOLETIM_URNA';
+  return 'OUTRO';
+}
+
+function safeExtension(format: string, url: string): string {
+  const fmt = normalized(format);
+  if (fmt.includes('CSV')) return '.csv';
+  if (fmt.includes('ZIP')) return '.zip';
+  if (fmt.includes('JSON')) return '.json';
+  if (fmt.includes('TXT') || fmt.includes('TEXT')) return '.txt';
+  try {
+    const ext = path.extname(new URL(url).pathname).toLowerCase();
+    if (/^\.(csv|zip|txt|json|7z|gz)$/.test(ext)) return ext;
+  } catch {
+    // URL validation happens separately.
+  }
+  return '.bin';
+}
+
+function isAllowedTseUrl(rawUrl: string): boolean {
+  try {
+    const url = new URL(rawUrl);
+    return url.protocol === 'https:' &&
+      (url.hostname === 'dadosabertos.tse.jus.br' ||
+       url.hostname === 'www.tse.jus.br' ||
+       url.hostname === 'tse.jus.br' ||
+       url.hostname.endsWith('.tse.jus.br'));
+  } catch {
+    return false;
+  }
+}
+
+function isYearInPackage(pkg: CkanPackage, year: number): boolean {
+  const title = normalized(`${pkg.title ?? ''} ${pkg.name ?? ''}`);
+  return new RegExp(`(^|[^0-9])${year}([^0-9]|$)`).test(title);
+}
+
+export class TseOpenDataClient {
+  private readonly fetchImpl: typeof fetch;
+  private readonly downloadDir: string;
+  private readonly maxDownloadBytes: number;
+
+  constructor(options: TseOpenDataOptions = {}) {
+    this.fetchImpl = options.fetchImpl ?? fetch;
+    this.downloadDir = options.downloadDir ?? DEFAULT_DOWNLOAD_DIR;
+    this.maxDownloadBytes = options.maxDownloadBytes ?? DEFAULT_MAX_DOWNLOAD_BYTES;
+  }
+
+  private async ckan<T>(action: string, params: Record<string, string | number>): Promise<T> {
+    const url = new URL(`${CKAN_API}/${action}`);
+    for (const [key, value] of Object.entries(params)) url.searchParams.set(key, String(value));
+    const response = await this.fetchImpl(url, {
+      headers: { accept: 'application/json', 'user-agent': 'InteligenciaEleitoral/1.0 (TSE Open Data client)' },
+      signal: AbortSignal.timeout(25_000)
+    });
+    if (!response.ok) throw new Error(`Portal TSE/CKAN respondeu HTTP ${response.status} em ${action}.`);
+    const text = await response.text();
+    if (Buffer.byteLength(text, 'utf8') > MAX_METADATA_BYTES) throw new Error('Resposta de metadados do CKAN excedeu o limite de segurança.');
+    let payload: CkanEnvelope<T>;
+    try {
+      payload = JSON.parse(text) as CkanEnvelope<T>;
+    } catch {
+      throw new Error('O Portal TSE/CKAN retornou metadados que não são JSON válido.');
+    }
+    if (!payload.success) throw new Error(payload.error?.message || `A API CKAN falhou em ${action}.`);
+    return payload.result;
+  }
+
+  async search(year: number, kind?: TseResourceKind): Promise<TseCatalogResult> {
+    if (!Number.isInteger(year) || year < 1994 || year > new Date().getFullYear() + 1) {
+      throw new Error('Ano eleitoral inválido. Informe um ano entre 1994 e o próximo ano-calendário.');
+    }
+    const query = String(year);
+    const result = await this.ckan<{ count?: number; results?: CkanPackage[] }>('package_search', {
+      q: query,
+      rows: 1000,
+      start: 0
+    });
+    const packages = (result.results ?? []).filter(pkg => isYearInPackage(pkg, year));
+    const resources: TseCatalogResource[] = [];
+    for (const pkg of packages) {
+      for (const resource of pkg.resources ?? []) {
+        const url = String(resource.url ?? '');
+        if (!resource.id || !url || !isAllowedTseUrl(url)) continue;
+        const resourceKind = classifyResource(
+          String(resource.name ?? ''),
+          String(resource.description ?? ''),
+          String(resource.format ?? '')
+        );
+        if (kind && resourceKind !== kind) continue;
+        resources.push({
+          id: resource.id,
+          name: String(resource.name ?? 'Recurso sem nome'),
+          description: String(resource.description ?? ''),
+          format: String(resource.format ?? 'Desconhecido').toUpperCase(),
+          url,
+          size_bytes: resource.size == null || resource.size === '' ? null : Number(resource.size),
+          kind: resourceKind,
+          package_id: String(pkg.id ?? resource.package_id ?? ''),
+          package_name: String(pkg.name ?? ''),
+          package_title: String(pkg.title ?? pkg.name ?? 'Conjunto sem título'),
+          package_modified: pkg.metadata_modified ?? null
+        });
+      }
+    }
+    resources.sort((a, b) =>
+      a.package_title.localeCompare(b.package_title, 'pt-BR') ||
+      a.kind.localeCompare(b.kind) ||
+      a.name.localeCompare(b.name, 'pt-BR')
+    );
+    return {
+      source: 'Portal de Dados Abertos do TSE (CKAN API)',
+      year,
+      query,
+      dataset_count: packages.length,
+      resource_count: resources.length,
+      resources,
+      limitations: [
+        'O catálogo reflete os metadados publicados no Portal TSE no momento da consulta; ausência no resultado não prova inexistência histórica.',
+        'A classificação do recurso é heurística baseada no nome/descrição e deve ser conferida antes da ingestão.',
+        'Arquivos de votação por município/zona normalmente incluem vários cargos; o cargo deve ser filtrado pelos códigos e rótulos existentes no próprio arquivo.',
+        'Baixar e calcular SHA-256 não comprova, isoladamente, autenticidade ou completude eleitoral.'
+      ]
+    };
+  }
+
+  private async getResource(resourceId: string): Promise<{ resource: CkanResource; pkg: CkanPackage }> {
+    if (!/^[a-f0-9-]{16,64}$/i.test(resourceId)) throw new Error('Identificador de recurso CKAN inválido.');
+    const resource = await this.ckan<CkanResource>('resource_show', { id: resourceId });
+    if (!resource.url || !resource.package_id || !isAllowedTseUrl(resource.url)) {
+      throw new Error('O recurso não possui URL HTTPS permitida do domínio oficial do TSE.');
+    }
+    const pkg = await this.ckan<CkanPackage>('package_show', { id: resource.package_id });
+    if (!pkg.id || !(pkg.resources ?? []).some(item => item.id === resourceId)) {
+      throw new Error('O recurso não foi confirmado dentro do conjunto de dados informado pelo CKAN.');
+    }
+    return { resource, pkg };
+  }
+
+  async downloadResource(resourceId: string, year: number): Promise<TseDownloadManifest> {
+    if (!Number.isInteger(year) || year < 1994 || year > new Date().getFullYear() + 1) {
+      throw new Error('Ano eleitoral inválido.');
+    }
+    const { resource, pkg } = await this.getResource(resourceId);
+    if (!isYearInPackage(pkg, year)) {
+      throw new Error(`O recurso pertence ao conjunto "${pkg.title ?? pkg.name}", que não foi identificado como eleição de ${year}.`);
+    }
+    const url = String(resource.url);
+    const response = await this.fetchImpl(url, {
+      headers: { 'user-agent': 'InteligenciaEleitoral/1.0 (TSE Open Data client)' },
+      signal: AbortSignal.timeout(30 * 60_000),
+      redirect: 'follow'
+    });
+    if (!response.ok || !response.body) throw new Error(`Falha ao baixar recurso TSE: HTTP ${response.status}.`);
+    if (!isAllowedTseUrl(response.url || url)) throw new Error('O download redirecionou para um domínio não autorizado.');
+
+    const declaredLength = Number(response.headers.get('content-length') ?? 0);
+    if (declaredLength > this.maxDownloadBytes) throw new Error(`O recurso excede o limite de download de ${this.maxDownloadBytes} bytes.`);
+
+    const extension = safeExtension(String(resource.format ?? ''), url);
+    const yearDir = path.join(this.downloadDir, String(year));
+    await mkdir(yearDir, { recursive: true });
+    const basename = `${resourceId}${extension}`;
+    const finalPath = path.join(yearDir, basename);
+    const partialPath = `${finalPath}.${randomUUID()}.part`;
+    const hash = createHash('sha256');
+    let sizeBytes = 0;
+    const limiter = new Transform({
+      transform: (chunk: Buffer, _encoding, callback) => {
+        sizeBytes += chunk.length;
+        if (sizeBytes > this.maxDownloadBytes) {
+          callback(new Error(`O recurso excedeu o limite de download de ${this.maxDownloadBytes} bytes.`));
+          return;
+        }
+        hash.update(chunk);
+        callback(null, chunk);
+      }
+    });
+
+    try {
+      await pipeline(Readable.fromWeb(response.body as import('node:stream/web').ReadableStream), limiter, createWriteStream(partialPath, { flags: 'wx' }));
+      const digest = hash.digest('hex');
+      const signature = await this.validateFile(partialPath, extension);
+      await rename(partialPath, finalPath);
+      const manifest: TseDownloadManifest = {
+        source: 'Portal de Dados Abertos do TSE',
+        resource_id: resourceId,
+        dataset_id: String(pkg.name ?? pkg.id),
+        dataset_title: String(pkg.title ?? pkg.name ?? ''),
+        resource_name: String(resource.name ?? ''),
+        resource_url: url,
+        requested_year: year,
+        detected_kind: classifyResource(String(resource.name ?? ''), String(resource.description ?? ''), String(resource.format ?? '')),
+        format: String(resource.format ?? 'Desconhecido').toUpperCase(),
+        size_bytes: sizeBytes,
+        sha256: digest,
+        downloaded_at: new Date().toISOString(),
+        validation_status: 'DOWNLOADED_HASHED_LAYOUT_REVIEW_REQUIRED',
+        validation: {
+          extension_matches_format: this.extensionMatchesFormat(extension, String(resource.format ?? '')),
+          signature_valid: signature.signatureValid,
+          csv_header: signature.csvHeader,
+          notes: signature.notes
+        },
+        local_file: finalPath
+      };
+      await writeFile(`${finalPath}.manifest.json`, JSON.stringify(manifest, null, 2), { encoding: 'utf8', flag: 'wx' });
+      return manifest;
+    } catch (error) {
+      await rm(partialPath, { force: true });
+      throw error;
+    }
+  }
+
+  private extensionMatchesFormat(extension: string, format: string): boolean {
+    const normalizedFormat = normalized(format);
+    if (normalizedFormat.includes('CSV')) return extension === '.csv';
+    if (normalizedFormat.includes('ZIP')) return extension === '.zip';
+    if (normalizedFormat.includes('JSON')) return extension === '.json';
+    if (normalizedFormat.includes('TXT') || normalizedFormat.includes('TEXT')) return extension === '.txt';
+    return true;
+  }
+
+  private async validateFile(filePath: string, extension: string): Promise<{ signatureValid: boolean | null; csvHeader: string[] | null; notes: string[] }> {
+    const info = await stat(filePath);
+    if (info.size === 0) throw new Error('O recurso baixado está vazio.');
+    const { open, readFile } = await import('node:fs/promises');
+    const handle = await open(filePath, 'r');
+    const prefix = Buffer.alloc(Math.min(8, info.size));
+    try { await handle.read(prefix, 0, prefix.length, 0); } finally { await handle.close(); }
+    const notes: string[] = [];
+    let signatureValid: boolean | null = null;
+    let csvHeader: string[] | null = null;
+    if (extension === '.zip') {
+      signatureValid = prefix.length >= 4 && prefix[0] === 0x50 && prefix[1] === 0x4b && [0x03, 0x05, 0x07].includes(prefix[2]) && [0x04, 0x06, 0x08].includes(prefix[3]);
+      if (!signatureValid) throw new Error('O recurso anunciado como ZIP não possui assinatura ZIP válida.');
+      notes.push('Assinatura ZIP validada; o conteúdo interno ainda precisa de validação de layout e integridade.');
+    } else if (extension === '.csv' || extension === '.txt') {
+      const sample = (await readFile(filePath)).subarray(0, 64 * 1024).toString('utf8');
+      if (/^\s*<(?:!doctype\s+html|html)/i.test(sample) || /^\s*\{\s*"(?:success|error)"/i.test(sample)) {
+        throw new Error('O download retornou uma página HTML/JSON de erro, não um arquivo tabular.');
+      }
+      const firstLine = sample.split(/\r?\n/).find(line => line.trim().length > 0) ?? '';
+      const delimiter = firstLine.includes(';') ? ';' : ',';
+      csvHeader = firstLine.split(delimiter).map(cell => cell.trim().replace(/^"|"$/g, '').toUpperCase());
+      if (csvHeader.length < 2 || !csvHeader.some(col => /ANO_ELEICAO|CD_CARGO|SQ_CANDIDATO|QT_VOTOS/.test(col))) {
+        throw new Error('Cabeçalho não reconhecido como layout eleitoral TSE; arquivo preservado em quarentena.');
+      }
+      signatureValid = true;
+      notes.push('Cabeçalho tabular plausível detectado; validação semântica e de cobertura ainda pendente.');
+    } else if (extension === '.json') {
+      const sample = (await readFile(filePath)).subarray(0, 64 * 1024).toString('utf8').trim();
+      try { JSON.parse(sample); signatureValid = true; }
+      catch { signatureValid = null; notes.push('JSON não validado por amostra truncada; validar o documento completo no adaptador correspondente.'); }
+    } else {
+      notes.push('Formato não reconhecido para validação estrutural automática; mantido como artefato bruto.');
+    }
+    return { signatureValid, csvHeader, notes };
+  }
+}

@@ -139,3 +139,21 @@ Para evitar a falha mais comum em sistemas eleitorais — a soma inadvertida de 
    Para qualquer divergência detectada na ingestão, o registro é colocado em quarentena de inconsistência com log detalhado de divergência do TSE.
 3. **Impedimento de Dupla Contagem em Coligações e Federações:**
    - Votos de legenda são atribuídos ao partido isolado, e computados para o cálculo de cadeiras da federação/coligação sem replicar a linha física do voto.
+
+---
+
+## 6. Regras vinculantes para chaves e identidade
+
+O diagrama e o dicionário acima são modelo conceitual inicial, não esquema físico aprovado. Chaves de negócio devem ser confirmadas contra layouts reais e testes de unicidade por pleito.
+
+### 6.1. Resultado por seção
+A chave candidata de `ResultadoVotoSecao` não é universal até considerar, conforme campos reais, eleição, turno, tipo de eleição, UF, município TSE, zona, seção, cargo, número votável, categoria/tipo de voto e versão da totalização. `NR_VOTAVEL` não identifica sozinho uma candidatura em todos os cargos e pleitos. Não usar `SQ_CANDIDATO = NULL` indistintamente para legenda, branco, nulo e outras categorias; tipar explicitamente a categoria e sua relação com candidatura. Só definir chave física após perfil de dados reais e teste de duplicidade.
+
+### 6.2. Granularidade
+Resultados por seção, agregados oficiais por município/zona e totalizadores de apuração são observações diferentes. Devem permanecer em camadas distintas com origem e granularidade explícitas. Distinguir agregado oficial TSE de agregado recalculado pela plataforma. Não presumir que somar todas as categorias de um arquivo reproduz comparecimento.
+
+### 6.3. Identidade histórica
+`SQ_CANDIDATO` identifica candidatura, não pessoa histórica. Não vincular automaticamente registros por nome, nome de urna, data de nascimento, naturalidade ou semelhança textual. A resolução deve aceitar estados `confirmado`, `provável`, `ambíguo` e `não vinculado`, guardar evidências, regra/versão, data e revisão humana. CPF mascarado ou hash não recuperável não é chave universal. Manter candidaturas independentes quando a pessoa não puder ser resolvida.
+
+### 6.4. Território e tempo
+Código TSE e IBGE pertencem a sistemas distintos. Manter correspondências versionadas por período, com fonte e cardinalidade registradas; não presumir equivalência entre zona e município nem estabilidade dos códigos históricos. Separar data do pleito da data/versão do arquivo e da totalização.

@@ -84,3 +84,16 @@ Antes de qualquer tabela agregada ser promovida a dado disponível para uso, o p
 ### RNF-008: Testabilidade e Manutenção
 - **Suíte de Testes Automatizados:** Testes unitários para funções de cálculo eleitoral (QE, QP, D'Hondt, HHI) utilizando casos de teste reais históricos com resultados oficiais homologados pelo TSE (ex: bancada de Deputados Federais do RS em 2022).
 - Nenhum script de transformação é aceito sem teste de validação contra a totalização oficial publicada no Diário da Justiça Eleitoral.
+
+---
+
+## 4. Validação contextual e evidência de divergências
+
+As identidades apresentadas acima são regras candidatas, não equações universais para todo arquivo, cargo, turno e estado de totalização. Antes de validar, documentar universo, granularidade, categorias, semântica do layout, versão do resultado oficial e exceções normativas.
+
+- `aptos = comparecimento + abstenção` só deve ser testado quando os campos representam o mesmo universo e referência de totalização.
+- Não assumir `nominais + legenda + brancos + nulos + anulados/sub judice = comparecimento` sem comprovar definições, inclusão/exclusão de categorias e unidade da contagem.
+- Não comparar soma de linhas de seção com total municipal/estadual sem alinhar eleição, turno, cargo, categoria, território e versão da totalização.
+- Não validar distribuição de cadeiras por fórmula genérica sem circunscrição, cargo, magnitude, partidos/federações, situação jurídica dos votos e regra legal aplicável ao pleito.
+
+Cada divergência deve guardar arquivo e SHA-256, layout, parâmetros, chave/grupo afetado, valores comparados, regra aplicada e classificação. Quarentena é para divergência inexplicada, não para universos incompatíveis conhecidos. Nunca alterar dado bruto para forçar fechamento. Limites de desempenho e volumetria são metas até benchmark documentado. Hash do arquivo não prova interpretação correta dos campos; registrar também versões de esquema, código e regra metodológica.

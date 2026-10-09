@@ -1,8 +1,11 @@
-# Plataforma Inteligência Eleitoral — Índice Canônico da Fundação Científica e Arquitetural (Fase 1)
+# Plataforma Inteligência Eleitoral — Índice da Fundação Científica e Arquitetural (Fase 1)
 
-**Versão da Especificação:** 1.0.0-PROD-SPEC  
-**Status:** Canônico / Aprovado para Transição para Fase 2  
-**Repositório Base:** `Tokenizaa/Deputado-Carlos-Burigo` (Concepção Universal e Neutra)  
+> **AVISO DE GOVERNANÇA:** a documentação existente não equivale a aprovação independente. O catálogo de fontes, as chaves, as regras eleitorais, as identidades históricas e a arquitetura ainda têm bloqueios metodológicos documentados em `08_CRITERIOS_DE_ACEITE_FASE_2.md`. Não iniciar a Fase 2 até aprovação explícita.
+
+**Versão da Especificação:** 1.0.1-AUDIT-REVIEW  
+**Status:** EM REVISÃO — Fase 1 aberta; Fase 2 bloqueada até aprovação explícita  
+**Repositório desta especificação:** `Tokenizaa/IE-electoral-Inteligence`  
+**Repositório relacionado citado na concepção:** `Tokenizaa/Deputado-Carlos-Burigo` — relação e papel canônico ainda precisam ser formalmente confirmados.  
 **Fonte Oficial Primária:** Tribunal Superior Eleitoral (TSE) — Portal de Dados Abertos  
 
 ---

@@ -116,3 +116,13 @@ O Tribunal Superior Eleitoral disponibiliza seus dados oficiais por meio de dois
 | `consulta_cand` | Estático pós-julgamento final | ~100 a 250 MB compactado | Latin1 / UTF-8 | Download HTTP direto do Portal TSE |
 | `local_votacao` | Bienal por eleição | ~80 MB compactado | UTF-8 | Download HTTP direto do Portal TSE |
 | `perfil_eleitorado` | Mensal / Bienal | ~300 MB compactado | UTF-8 | Download HTTP direto do Portal TSE |
+
+---
+
+## 4. Estado de verificação do catálogo
+
+As faixas temporais, padrões de nome, URLs, codificações, tamanhos e campos descritos acima são hipóteses de catálogo, não evidência de que cada arquivo exista com esses atributos em todos os anos. Nenhum recurso deve ser considerado validado até haver ficha de evidência por conjunto × ano/pleito × UF ou abrangência nacional.
+
+A ficha deve registrar: URL direta do recurso e página oficial de metadados; data/hora de verificação e status HTTP; nome original, bytes, formato, compressão, encoding confirmado, delimitador e aspas; SHA-256 do arquivo baixado; cabeçalho real e versão do layout; mapeamento de campos e tipos; granularidade observada, chave candidata, contagem de linhas e teste de duplicidade; cobertura e limitações verificadas; e evidência de versão/retotalização.
+
+Não generalizar encoding por ano sem testar os arquivos. Não inferir tamanho, número de linhas, cobertura ou semântica de códigos a partir de estimativas. URLs construídas por padrão (por exemplo, resultados-YYYY) só são links verificados depois de abrir e confirmar a página e o recurso. Votação por seção, candidato por município/zona, detalhe de apuração, candidaturas, eleitorado e locais de votação permanecem fontes distintas até que layout e semântica sejam confirmados. Uma amostra real deve ser perfilada antes da primeira carga; ela não prova cobertura de todos os anos.

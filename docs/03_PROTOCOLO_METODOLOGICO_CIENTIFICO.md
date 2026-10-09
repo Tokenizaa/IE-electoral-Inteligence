@@ -87,3 +87,21 @@ A plataforma proíbe terminantemente a utilização de Modelos de Linguagem (LLM
 3. **A IA não faz afirmações causais sem testes:** Se solicitada a explicar "por que o candidato perdeu votos", a IA deve descrever os fatos empíricos (ex: "perdeu 4.200 votos nominais no município Z, onde o comparecimento caiu 8% e a chapa concorrente W ampliou seus votos em 5.100") e abster-se de especulações subjetivas de psicologia do eleitor não sustentadas em dados.
 4. **Verificação de Fórmulas e Citações:** Fórmulas teóricas exibidas devem usar notação matemática universal e citar os autores de referência (ex: Taagepera & Shugart, 1989; Gallagher, 1991; Rae, 1967; Ames, 2001).
 5. **Logs de Auditoria de Prompts:** Todo texto analítico assistido por IA deve registrar o prompt do sistema, os parâmetros de contexto fornecidos e os identificadores das tabelas consultadas.
+
+---
+
+## 4. Regras vinculantes de validação
+
+Este adendo prevalece sobre exemplos anteriores mais amplos. É uma especificação; não comprova que os testes estejam implementados.
+
+### 4.1. Fechamento aritmético contextual
+Antes de testar uma identidade, registrar eleição, turno, território, cargo, categoria de voto, layout e versão da totalização. Só comparar campos que representem o mesmo universo. Não somar automaticamente votos nominais, legenda, brancos, nulos e anulados/sub judice sem verificar a semântica e as regras de totalização da fonte. Classificar divergências como explicadas, não comparáveis ou não explicadas; nunca corrigir o dado bruto silenciosamente.
+
+### 4.2. Hipóteses e causalidade
+Análises descritivas não exigem automaticamente testes de hipótese. Quando houver inferência, declarar população-alvo, desenho, pressupostos, estimando, incerteza, critérios de exclusão e multiplicidade quando relevante. Um desenho quase-experimental não basta por si só para alegar causalidade: documentar identificação, pressupostos e ameaças à validade.
+
+### 4.3. Indicadores
+Cada indicador deve ter ficha versionada com pergunta, unidade, universo, variável, denominador, fórmula, tratamento de zeros/ausências, limites, interpretação permitida, casos de não aplicação, bibliografia e testes conhecidos. HHI da distribuição geográfica dos votos de um candidato (share de cada território no total desse candidato) é diferente de HHI da competição dentro de um território (share de cada candidato/partido naquele território). Não usar “Gini eleitoral”, “coeficiente de localização” ou “volatilidade de Pedersen” sem definir fórmula e universo comparável.
+
+### 4.4. Comparabilidade histórica
+Produzir matriz de comparabilidade por pleito, cargo, sistema eleitoral, território, fonte/layout e status de totalização. Tratar explicitamente mudanças territoriais, oferta de candidaturas, magnitude distrital e regras eleitorais. Quando não houver correspondência confiável, declarar a série não comparável em vez de imputar equivalência.

@@ -110,3 +110,18 @@ A plataforma **Inteligência Eleitoral** adota uma arquitetura em duas camadas c
 - **Supabase Row Level Security (RLS):**
   - **Tabelas de Dados Oficiais e Projeções (`mart_*`, `dim_*`):** Permissão de `SELECT` aberta para `anon` e `authenticated` (dados públicos oficiais). Escritas (`INSERT`, `UPDATE`, `DELETE`) estritamente bloqueadas para qualquer role que não seja o `service_role` da chave de automação do pipeline ETL.
   - **Tabelas de Pesquisas Salvas e Análises de Usuários (futuro):** RLS atrelado ao `auth.uid()`, garantindo isolamento total entre contas.
+
+---
+
+## 6. Decisões arquiteturais pendentes de validação
+
+PostgreSQL local + Supabase remoto é uma hipótese arquitetural. Volumetria, custo, latência, capacidade, particionamento e benefício das projeções ainda dependem de benchmark; números e comandos anteriores são metas/exemplos, não medições nem funcionalidades comprovadas.
+
+Antes de implementar ou publicar, especificar e testar:
+1. **Contrato de publicação:** schema/versionamento, chave de idempotência, lote, watermark, checksum, contagens de origem/destino, validações pré/pós e substituição atômica.
+2. **Consistência e retomada:** estados de lote (preparado, validado, publicado, rejeitado), retries idempotentes, checkpoints, prevenção de publicação parcial e tratamento de retotalização após publicação.
+3. **Recuperação:** reconstrução reproduzível a partir de artefatos e código versionados; RPO/RTO; backup e restauração testados. Não afirmar reconstrução total sem ensaio documentado.
+4. **Segurança:** modelo de ameaça, acesso mínimo e testes de RLS por papel. Dados públicos não justificam escrita pública nem exposição de dados pessoais; credenciais privilegiadas nunca podem estar no cliente.
+5. **Benchmark:** consultas representativas, volume, recursos, concorrência, p50/p95/p99, custo e critérios de aceite. Não declarar SLA antes de medir.
+
+A decisão sobre quais dados enviar ao Supabase deve resultar de necessidades do produto, custo, segurança e capacidade medida, não de estimativas não verificadas.

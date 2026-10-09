@@ -4,6 +4,8 @@
  * The initial profiles describe repository sample files only. They are deliberately
  * NOT treated as official, year-wide layouts and never authorize automatic ingestion.
  */
+import { createHash } from 'node:crypto';
+
 export type TSE_LAYOUT_STATUS =
   | 'KNOWN_SAMPLE_SIGNATURE_ONLY'
   | 'REQUIRED_COLUMNS_MATCH_UNVERIFIED_LAYOUT'
@@ -102,15 +104,7 @@ function normalizeColumn(column: string): string {
 }
 
 function fingerprint(columns: string[]): string {
-  // Node crypto is imported lazily to keep this helper usable in server-side tests.
-  return createSha256(columns.map(normalizeColumn).join(';'));
-}
-
-function createSha256(value: string): string {
-  // A synchronous SHA-256 fingerprint is deterministic and stable across runs.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const crypto = require('node:crypto') as typeof import('node:crypto');
-  return crypto.createHash('sha256').update(value, 'utf8').digest('hex');
+  return createHash('sha256').update(columns.map(normalizeColumn).join(';'), 'utf8').digest('hex');
 }
 
 export function listTseLayoutProfiles(): ReadonlyArray<TseLayoutProfile> {

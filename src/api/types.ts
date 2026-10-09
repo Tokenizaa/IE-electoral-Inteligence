@@ -104,6 +104,7 @@ export interface AIReportEvidenceBundle {
   partido: string;
   cargo: string;
   eleicao: string;
+  cobertura: string;
   total_votos_amostra: number;
   hhi: number;
   classificacao_espacial: string;

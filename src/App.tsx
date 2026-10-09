@@ -17,6 +17,7 @@ import { CandidateItem } from './api/types.ts';
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [candidates, setCandidates] = useState<CandidateItem[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedCandidateSq, setSelectedCandidateSq] = useState<number>(210001610488);
   const [statusInfo, setStatusInfo] = useState({
     cobertura: 'RS 2022 (Amostra Auditada)',
@@ -31,7 +32,7 @@ export default function App() {
           setSelectedCandidateSq(data[0].sq_candidato);
         }
       })
-      .catch(err => console.error('Erro ao carregar candidatos:', err));
+      .catch(err => setLoadError(err instanceof Error ? err.message : 'Não foi possível carregar os dados eleitorais.'));
   }, []);
 
   return (
@@ -45,6 +46,18 @@ export default function App() {
 
       {/* Main Content Viewport */}
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 py-6 w-full">
+        {loadError && (
+          <div role="alert" className="mb-5 rounded-xl border border-amber-800/60 bg-amber-950/30 p-4 text-sm text-amber-100">
+            <strong className="block mb-1">Dados eleitorais indisponíveis</strong>
+            <span>{loadError}</span>
+            <p className="mt-2 text-xs text-amber-200/80">A interface não substituirá a falha por candidatos ou números de demonstração.</p>
+          </div>
+        )}
+        {!loadError && candidates.length === 0 && (
+          <div role="status" className="mb-5 rounded-xl border border-slate-700 bg-slate-900 p-4 text-sm text-slate-300">
+            Carregando os dados eleitorais disponíveis…
+          </div>
+        )}
         {activeTab === 'overview' && (
           <OverviewTab onNavigateTab={setActiveTab} />
         )}

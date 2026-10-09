@@ -62,7 +62,7 @@ export class AnalyticalEngine {
       const cdTse = row.cd_tse;
       const votosCand = Number(row.votos_candidato);
 
-      // Total valid votes in municipality
+      // Total de votos registrados na amostra para este município; não é o total municipal oficial.
       const totMun = await this.db.query<{ total: number }>(
         `SELECT COALESCE(SUM(qt_votos), 0) as total
          FROM raw_votacao_munzona

@@ -69,7 +69,8 @@ export class AnalyticalEngine {
          WHERE id_eleicao = $1 AND cd_tse = $2 AND (tp_votavel = 'NOMINAL' OR tp_votavel = 'LEGENDA')`,
         [idEleicao, cdTse]
       );
-      const totalValidosMun = Number(totMun[0]?.total || 1);
+      const totalRegistrosAmostraMun = Number(totMun[0]?.total || 0);
+      if (totalRegistrosAmostraMun <= 0) throw new Error(`Sem registros de votos na amostra para o município TSE ${cdTse}.`);
 
       // Calculate ranking in municipality
       const rankQuery = await this.db.query<{ rank: number }>(
@@ -86,23 +87,23 @@ export class AnalyticalEngine {
       );
       const ranking = Number(rankQuery[0]?.rank || 1);
 
-      const pctSobreValidos = Number(((votosCand / totalValidosMun) * 100).toFixed(4));
+      const pctSobreRegistrosAmostra = Number(((votosCand / totalRegistrosAmostraMun) * 100).toFixed(4));
       const pctSobreCand = Number(((votosCand / totalVotosCandidato) * 100).toFixed(4));
       const idMart = `MART_${idEleicao}_${sqCandidato}_${cdIbge}`;
 
       await this.db.query(
         `INSERT INTO mart_votacao_candidato_mun (
           id_mart, id_eleicao, sq_candidato, cd_ibge, cd_tse,
-          qt_votos_nominais, pct_sobre_validos_mun, pct_sobre_votos_candidato,
+          qt_votos_nominais, pct_sobre_registros_amostra_mun, pct_sobre_votos_candidato,
           ranking_no_municipio, data_atualizacao
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
         ON CONFLICT (id_eleicao, sq_candidato, cd_ibge) DO UPDATE SET
           qt_votos_nominais = EXCLUDED.qt_votos_nominais,
-          pct_sobre_validos_mun = EXCLUDED.pct_sobre_validos_mun,
+          pct_sobre_registros_amostra_mun = EXCLUDED.pct_sobre_registros_amostra_mun,
           pct_sobre_votos_candidato = EXCLUDED.pct_sobre_votos_candidato,
           ranking_no_municipio = EXCLUDED.ranking_no_municipio,
           data_atualizacao = CURRENT_TIMESTAMP`,
-        [idMart, idEleicao, sqCandidato, cdIbge, cdTse, votosCand, pctSobreValidos, pctSobreCand, ranking]
+        [idMart, idEleicao, sqCandidato, cdIbge, cdTse, votosCand, pctSobreRegistrosAmostra, pctSobreCand, ranking]
       );
     }
   }

@@ -77,6 +77,22 @@ async function startServer() {
     }
   });
 
+  // Inspect an already downloaded CSV and enumerate the cargo codes actually present.
+  app.post('/api/tse/inspect', async (req, res) => {
+    const resourceId = String(req.body?.resource_id ?? '');
+    const year = Number.parseInt(String(req.body?.year ?? ''), 10);
+    if (!resourceId || !Number.isInteger(year)) {
+      return res.status(400).json({ error: 'Informe resource_id e year do catálogo do TSE.' });
+    }
+    try {
+      res.json(await tseOpenData.inspectDownloadedResource(resourceId, year));
+    } catch (err: any) {
+      const message = String(err?.message ?? 'Falha ao inspecionar o arquivo TSE.');
+      const status = /inválido|não encontrado|exige CSV|não contém a coluna|fora do diretório/i.test(message) ? 400 : 422;
+      res.status(status).json({ error: message });
+    }
+  });
+
   // Elections Catalog
   app.get('/api/elections', async (req, res) => {
     try {

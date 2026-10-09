@@ -204,7 +204,7 @@ export const TerritoryTab: React.FC<TerritoryTabProps> = ({
             </svg>}
 
             {/* Floating Legend */}
-            <div className="absolute bottom-3 left-3 bg-slate-900/90 backdrop-blur p-2.5 rounded-lg border border-slate-800 text-[10px] space-y-1">
+            {RS_MUNICIPALITIES_GEO.length > 0 && <div className="absolute bottom-3 left-3 bg-slate-900/90 backdrop-blur p-2.5 rounded-lg border border-slate-800 text-[10px] space-y-1">
               <span className="font-mono text-slate-300 font-bold block">Legenda da Intensidade</span>
               <div className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded" style={{ backgroundColor: metric === 'pct_mun' ? '#059669' : metric === 'pct_cand' ? '#9333ea' : '#4f46e5' }}></span>
@@ -218,7 +218,7 @@ export const TerritoryTab: React.FC<TerritoryTabProps> = ({
                 <span className="w-3 h-3 rounded bg-slate-800"></span>
                 <span className="text-slate-500">Sem Votação / Fora da Amostra</span>
               </div>
-            </div>
+            </div>}
           </div>
 
           <div className="text-[10px] text-slate-500 flex items-center justify-between">

@@ -76,6 +76,28 @@ async function run() {
 
     await assert.rejects(() => client.downloadResource(resourceId, 2024), /não foi identificado como eleição de 2024/);
 
+    // CKAN metadata may say CSV while the official resource URL is a ZIP container.
+    const zipResource = {
+      ...resource,
+      id: '87654321-4321-4321-4321-cba987654321',
+      format: 'CSV',
+      url: 'https://cdn.tse.jus.br/estatistica/teste/resultados.zip'
+    };
+    const zipPackage = { ...pkg, resources: [zipResource] };
+    const zipBytes = new Uint8Array([0x50, 0x4b, 0x03, 0x04]);
+    const zipFetch: typeof fetch = async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith('/resource_show')) return Response.json({ success: true, result: zipResource });
+      if (url.pathname.endsWith('/package_show')) return Response.json({ success: true, result: zipPackage });
+      if (url.hostname === 'cdn.tse.jus.br') return new Response(zipBytes, { status: 200, headers: { 'content-length': String(zipBytes.length) } });
+      throw new Error(`Unexpected URL: ${url}`);
+    };
+    const zipClient = new TseOpenDataClient({ fetchImpl: zipFetch, downloadDir: tempDir });
+    const zipManifest = await zipClient.downloadResource(zipResource.id, 2022);
+    assert.ok(zipManifest.local_file.endsWith('.zip'), 'A extensão real da URL deve prevalecer sobre o metadado genérico CSV.');
+    assert.equal(zipManifest.validation.signature_valid, true);
+    assert.equal(zipManifest.validation.extension_matches_format, false, 'A divergência entre formato declarado e container deve permanecer auditável.');
+
     const unsafeFetch: typeof fetch = async (input) => {
       const url = new URL(String(input));
       if (url.pathname.endsWith('/resource_show')) {

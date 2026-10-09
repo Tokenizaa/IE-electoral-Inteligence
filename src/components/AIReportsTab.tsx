@@ -259,9 +259,9 @@ ${report.limitacoes_e_epistemologia.join('\n')}
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-white flex items-center gap-2">
                 <Database className="w-4 h-4 text-indigo-400" />
-                Evidências Estruturadas Auditadas que Fundamentaram a Análise
+                Evidências Estruturadas Utilizadas na Análise
               </span>
-              <span className="text-[10px] font-mono text-emerald-400">Determinismo 100%</span>
+              <span className="text-[10px] font-mono text-emerald-400">Relatório com escopo limitado</span>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
@@ -275,7 +275,7 @@ ${report.limitacoes_e_epistemologia.join('\n')}
               </div>
               <div className="p-2 rounded bg-slate-900 border border-slate-800">
                 <span className="text-slate-500 text-[10px] block">Quociente Eleitoral:</span>
-                <span className="text-emerald-300 font-bold">{report.evidencias_vinculadas.quociente_eleitoral.toLocaleString()}</span>
+                <span className="text-emerald-300 font-bold">{report.evidencias_vinculadas.quociente_eleitoral == null ? 'Indisponível — amostra parcial' : report.evidencias_vinculadas.quociente_eleitoral.toLocaleString()}</span>
               </div>
               <div className="p-2 rounded bg-slate-900 border border-slate-800">
                 <span className="text-slate-500 text-[10px] block">Top Reduto:</span>

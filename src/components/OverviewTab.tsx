@@ -37,8 +37,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ onNavigateTab }) => {
           </h2>
           <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
             Esta plataforma não é um dashboard estático nem um chatbot genérico. Foi concebida como um laboratório 
-            de <strong>ciência de dados eleitorais</strong> com total fidelidade às fontes oficiais do TSE, fórmulas matemáticas 
-            abertas e reproduzíveis, e separação epistemológica estrita entre dado factual, métrica analítica e parecer interpretativo.
+            de <strong>ciência de dados eleitorais</strong> com foco em rastreabilidade das fontes do TSE, explicitação das fórmulas e distinção entre dado observado, métrica analítica e interpretação. Esses controles ainda dependem de validação e evidências por análise.
           </p>
 
           <div className="pt-2 flex flex-wrap gap-3 text-xs">
@@ -53,7 +52,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ onNavigateTab }) => {
               onClick={() => onNavigateTab('territory')}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"
             >
-              <span>Explorar Mapa Coroplético</span>
+              <span>Ver situação territorial</span>
             </button>
           </div>
         </div>
@@ -82,7 +81,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ onNavigateTab }) => {
           </div>
           <div className="text-base font-bold text-white">PostgreSQL 18 (PGlite WASM)</div>
           <p className="text-[11px] text-slate-400 leading-relaxed">
-            Storage relacional local com integridade referencial ativa, esquemas separados (meta, dim, raw, mart) e idempotência atestada.
+            Banco relacional local. A integridade referencial e a idempotência da ingestão precisam de execução de testes e evidências reproduzíveis.
           </p>
           <div className="text-[10px] text-emerald-400 font-mono font-semibold pt-1">
             Consulte as evidências verificadas
@@ -96,7 +95,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ onNavigateTab }) => {
           </div>
           <div className="text-base font-bold text-white">IA opcional (Server-Side)</div>
           <p className="text-[11px] text-slate-400 leading-relaxed">
-            Geração de diagnósticos via @google/genai com prompt anti-alucinação rígido e fallback determinístico imediato.
+            Geração opcional via @google/genai. Na ausência de credenciais ou em caso de falha, o sistema tenta produzir relatório determinístico limitado à amostra.
           </p>
           <div className="text-[10px] text-purple-400 font-mono font-semibold pt-1">
             Disponibilidade depende de credenciais
@@ -117,45 +116,45 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ onNavigateTab }) => {
             </p>
           </div>
           <span className="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-            Status: verificar evidências
+            Status: não validado
           </span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
           <div className="p-3 rounded-lg bg-slate-950 border border-slate-800">
-            <div className="flex items-center justify-between font-mono text-[10px] text-emerald-400 font-bold mb-1">
+            <div className="flex items-center justify-between font-mono text-[10px] text-amber-400 font-bold mb-1">
               <span>TESTE 01</span>
-              <span>PASS</span>
+              <span>PENDENTE</span>
             </div>
             <div className="font-semibold text-white text-xs">Fechamento da Urna</div>
-            <p className="text-[11px] text-slate-400 mt-0.5">Aptos = Comp + Abst; Votos = Comp (6 zonas testadas sem divergência).</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">Não há evidência de execução reproduzível deste teste neste repositório.</p>
           </div>
 
           <div className="p-3 rounded-lg bg-slate-950 border border-slate-800">
-            <div className="flex items-center justify-between font-mono text-[10px] text-emerald-400 font-bold mb-1">
+            <div className="flex items-center justify-between font-mono text-[10px] text-amber-400 font-bold mb-1">
               <span>TESTE 02</span>
               <span>PASS</span>
             </div>
             <div className="font-semibold text-white text-xs">Conservação de Votos</div>
-            <p className="text-[11px] text-slate-400 mt-0.5">Soma de votos atômicos confere exatamente com totalizadores do TSE.</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">Conciliação com totalizadores oficiais ainda precisa ser demonstrada por teste e fonte identificada.</p>
           </div>
 
           <div className="p-3 rounded-lg bg-slate-950 border border-slate-800">
-            <div className="flex items-center justify-between font-mono text-[10px] text-emerald-400 font-bold mb-1">
+            <div className="flex items-center justify-between font-mono text-[10px] text-amber-400 font-bold mb-1">
               <span>TESTE 03</span>
               <span>PASS</span>
             </div>
             <div className="font-semibold text-white text-xs">Território TSE x IBGE</div>
-            <p className="text-[11px] text-slate-400 mt-0.5">Vínculos territoriais devem ser validados por códigos oficiais.</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">Vínculos territoriais e correspondência TSE–IBGE ainda precisam de validação documentada.</p>
           </div>
 
           <div className="p-3 rounded-lg bg-slate-950 border border-slate-800">
-            <div className="flex items-center justify-between font-mono text-[10px] text-emerald-400 font-bold mb-1">
+            <div className="flex items-center justify-between font-mono text-[10px] text-amber-400 font-bold mb-1">
               <span>TESTE 04</span>
               <span>PASS</span>
             </div>
             <div className="font-semibold text-white text-xs">Integridade de Candidaturas</div>
-            <p className="text-[11px] text-slate-400 mt-0.5">Zero registros órfãos; validação de quocientes com sobras 80/20.</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">Integridade de candidaturas e regras de quociente/sobras não estão validadas por esta interface.</p>
           </div>
         </div>
       </div>

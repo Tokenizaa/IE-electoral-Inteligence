@@ -62,9 +62,9 @@ export const InvestigationTab: React.FC<InvestigationTabProps> = ({
 
   const handleExportCsv = () => {
     if (!analysis) return;
-    const headers = ['CD_IBGE;CD_TSE;NM_MUNICIPIO;NM_REGIAO;QT_VOTOS_NOMINAIS;PCT_SOBRE_VALIDOS_MUN;PCT_SOBRE_VOTOS_CANDIDATO;RANKING_NO_MUNICIPIO'];
+    const headers = ['CD_IBGE;CD_TSE;NM_MUNICIPIO;NM_REGIAO;QT_VOTOS_NOMINAIS;PCT_SOBRE_REGISTROS_AMOSTRA_MUN;PCT_SOBRE_VOTOS_CANDIDATO;RANKING_NO_MUNICIPIO'];
     const rows = analysis.resultados_municipais.map(r => 
-      `${r.cd_ibge};${r.cd_tse};${r.nm_municipio};${r.nm_regiao};${r.qt_votos_nominais};${r.pct_sobre_validos_mun};${r.pct_sobre_votos_candidato};${r.ranking_no_municipio}`
+      `${r.cd_ibge};${r.cd_tse};${r.nm_municipio};${r.nm_regiao};${r.qt_votos_nominais};${r.pct_sobre_registros_amostra_mun};${r.pct_sobre_votos_candidato};${r.ranking_no_municipio}`
     );
     const csvContent = [headers, ...rows].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -83,7 +83,7 @@ export const InvestigationTab: React.FC<InvestigationTabProps> = ({
         <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800/80">
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-indigo-400" />
-            <span className="text-xs font-semibold text-white uppercase tracking-wider">Filtros Oficiais da Consulta</span>
+            <span className="text-xs font-semibold text-white uppercase tracking-wider">Filtros da Consulta (amostra)</span>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -150,11 +150,14 @@ export const InvestigationTab: React.FC<InvestigationTabProps> = ({
                 onChange={(e) => setSelectedPartyNr(Number(e.target.value))}
                 className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-indigo-500"
               >
-                <option value={15}>15 — MDB</option>
-                <option value={13}>13 — PT (FE Brasil)</option>
-                <option value={22}>22 — PL</option>
-                <option value={11}>11 — PP</option>
-                <option value={10}>10 — REPUBLICANOS</option>
+                {Array.from(new Map(candidates.map(candidate => [
+                  candidate.nr_partido,
+                  { nr_partido: candidate.nr_partido, sg_partido: candidate.sg_partido, nm_partido: candidate.nm_partido }
+                ])).values()).sort((a, b) => a.nr_partido - b.nr_partido).map(party => (
+                  <option key={party.nr_partido} value={party.nr_partido}>
+                    {party.nr_partido} — {party.sg_partido}
+                  </option>
+                ))}
               </select>
             </div>
           )}
@@ -279,7 +282,7 @@ export const InvestigationTab: React.FC<InvestigationTabProps> = ({
                     <th className="py-2.5 px-3">Município</th>
                     <th className="py-2.5 px-3">Região</th>
                     <th className="py-2.5 px-3 text-right">Votos Nominais</th>
-                    <th className="py-2.5 px-3 text-right">% do Município</th>
+                    <th className="py-2.5 px-3 text-right">Participação na amostra municipal (%)</th>
                     <th className="py-2.5 px-3 text-right">% do Candidato</th>
                     <th className="py-2.5 px-3 text-center">Posição Local</th>
                     <th className="py-2.5 px-3 font-mono">Código IBGE</th>
@@ -297,7 +300,7 @@ export const InvestigationTab: React.FC<InvestigationTabProps> = ({
                         {mun.qt_votos_nominais.toLocaleString()}
                       </td>
                       <td className="py-2.5 px-3 text-right font-mono text-slate-300">
-                        {mun.pct_sobre_validos_mun.toFixed(2)}%
+                        {mun.pct_sobre_registros_amostra_mun.toFixed(2)}%
                       </td>
                       <td className="py-2.5 px-3 text-right font-mono text-emerald-400">
                         {mun.pct_sobre_votos_candidato.toFixed(2)}%
@@ -325,13 +328,16 @@ export const InvestigationTab: React.FC<InvestigationTabProps> = ({
           <div className="bg-slate-900 rounded-xl border border-slate-800 p-5">
             <div className="flex items-center justify-between pb-4 border-b border-slate-800">
               <div>
-                <span className="text-[10px] font-mono uppercase text-indigo-400 font-bold">Composição Partidária</span>
+                <span className="text-[10px] font-mono uppercase text-indigo-400 font-bold">Registros partidários da amostra</span>
+                <p className="mt-2 max-w-3xl text-[11px] text-amber-200">
+                  Os arquivos contêm apenas algumas candidaturas e registros de legenda. Estes valores não são totais oficiais completos do partido nem medem sua dependência real da legenda.
+                </p>
                 <h2 className="text-xl font-bold text-white">
                   {partyAnalysis.sg_partido} — {partyAnalysis.nm_partido} ({partyAnalysis.nr_partido})
                 </h2>
               </div>
               <div className="text-right">
-                <span className="text-[11px] text-slate-400 block">Total de Votos Válidos</span>
+                <span className="text-[11px] text-slate-400 block">Votos registrados na amostra</span>
                 <span className="text-lg font-bold text-indigo-300 font-mono">
                   {partyAnalysis.total_votos_validos.toLocaleString()}
                 </span>
@@ -345,7 +351,7 @@ export const InvestigationTab: React.FC<InvestigationTabProps> = ({
                   {partyAnalysis.total_votos_nominais.toLocaleString()}
                 </div>
                 <div className="text-[11px] text-slate-400 mt-0.5">
-                  {(100 - partyAnalysis.pct_dependencia_legenda).toFixed(1)}% do total da chapa
+                  {(100 - partyAnalysis.pct_dependencia_legenda).toFixed(1)}% dos registros observados
                 </div>
               </div>
 
@@ -355,17 +361,17 @@ export const InvestigationTab: React.FC<InvestigationTabProps> = ({
                   {partyAnalysis.total_votos_legenda.toLocaleString()}
                 </div>
                 <div className="text-[11px] text-slate-400 mt-0.5">
-                  Taxa de dependência: <strong>{partyAnalysis.pct_dependencia_legenda}%</strong>
+                  Participação da legenda nos registros observados: <strong>{partyAnalysis.pct_dependencia_legenda}%</strong>
                 </div>
               </div>
 
               <div className="p-3.5 rounded-lg bg-slate-950 border border-slate-800">
-                <span className="text-[10px] font-mono uppercase text-emerald-400">Candidato Mais Votado</span>
+                <span className="text-[10px] font-mono uppercase text-emerald-400">Maior votação nominal observada</span>
                 <div className="text-lg font-bold text-emerald-300 mt-1">
                   {partyAnalysis.candidatos[0]?.nm_urna || 'N/A'}
                 </div>
                 <div className="text-[11px] text-slate-400 mt-0.5">
-                  {partyAnalysis.candidatos[0]?.votos.toLocaleString()} votos ({partyAnalysis.candidatos[0]?.pct_do_partido}% da chapa)
+                  {partyAnalysis.candidatos[0]?.votos.toLocaleString()} votos ({partyAnalysis.candidatos[0]?.pct_do_partido}% dos registros observados)
                 </div>
               </div>
             </div>
@@ -373,7 +379,7 @@ export const InvestigationTab: React.FC<InvestigationTabProps> = ({
             {/* Party Candidates Table */}
             <div className="mt-5">
               <h4 className="text-xs font-semibold text-white uppercase tracking-wider mb-2">
-                Candidatos e Concentração Interna da Chapa
+                Candidaturas presentes na amostra
               </h4>
               <div className="space-y-1.5">
                 {partyAnalysis.candidatos.map(c => (
@@ -381,7 +387,7 @@ export const InvestigationTab: React.FC<InvestigationTabProps> = ({
                     <span className="font-semibold text-white">{c.nm_urna}</span>
                     <div className="flex items-center gap-4 font-mono">
                       <span className="text-slate-400">{c.votos.toLocaleString()} votos</span>
-                      <span className="text-indigo-400">{c.pct_do_partido}% do partido</span>
+                      <span className="text-indigo-400">{c.pct_do_partido}% dos registros observados</span>
                     </div>
                   </div>
                 ))}

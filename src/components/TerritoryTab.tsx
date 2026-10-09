@@ -61,7 +61,7 @@ export const TerritoryTab: React.FC<TerritoryTabProps> = ({
     }
 
     if (metric === 'pct_mun') {
-      const pct = stats.pct_sobre_validos_mun;
+      const pct = stats.pct_sobre_registros_amostra_mun;
       if (pct > 20) return '#059669'; // emerald-600
       if (pct > 10) return '#10b981'; // emerald-500
       if (pct > 3) return '#34d399'; // emerald-400
@@ -90,8 +90,7 @@ export const TerritoryTab: React.FC<TerritoryTabProps> = ({
           </span>
           <span className="text-amber-200/90 leading-relaxed">
             <strong>Concentração dos votos de um candidato</strong> (onde ele obtém seus votos, medido pelo HHI e % do candidato) é 
-            ontologicamente diferente de <strong>força eleitoral no território</strong> (qual fatia dos votos válidos do município o candidato conquistou). 
-            Utilize o seletor abaixo para alternar conscientemente entre as duas grandezas.
+            ontologicamente diferente de <strong>força eleitoral no território</strong> (fatia de todos os votos válidos municipais). A amostra atual não contém todas as candidaturas, portanto não permite estimar essa força territorial real. A métrica disponível é apenas a participação nos registros incluídos na amostra.
           </span>
         </div>
       </div>
@@ -130,7 +129,7 @@ export const TerritoryTab: React.FC<TerritoryTabProps> = ({
                 metric === 'pct_mun' ? 'bg-emerald-600 text-white font-medium' : 'text-slate-400 hover:text-white'
               }`}
             >
-              % dos Votos do Município
+              Participação na amostra municipal
             </button>
             <button
               onClick={() => setMetric('absoluto')}
@@ -259,9 +258,9 @@ export const TerritoryTab: React.FC<TerritoryTabProps> = ({
                   </div>
 
                   <div className="p-3 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-between">
-                    <span className="text-slate-400">Força Local (% dos Votos Válidos):</span>
+                    <span className="text-slate-400">Participação nos registros da amostra municipal:</span>
                     <span className="text-sm font-bold text-emerald-300 font-mono">
-                      {activeStats.pct_sobre_validos_mun}%
+                      {activeStats.pct_sobre_registros_amostra_mun}%
                     </span>
                   </div>
 

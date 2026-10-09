@@ -32,6 +32,8 @@ export const TseDataTab: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [downloads, setDownloads] = useState<Record<string, TseDownloadManifest>>({});
+  const [inspections, setInspections] = useState<Record<string, TseDownloadedInspection>>({});
+  const [inspectingId, setInspectingId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [searchText, setSearchText] = useState('');
 
@@ -81,6 +83,25 @@ export const TseDataTab: React.FC = () => {
       setError(err instanceof Error ? err.message : 'Falha ao baixar o recurso do TSE.');
     } finally {
       setDownloadingId(null);
+    }
+  };
+
+  const inspectCargos = async (resource: TseCatalogResource) => {
+    setInspectingId(resource.id);
+    setError(null);
+    try {
+      const response = await fetch('/api/tse/inspect', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ resource_id: resource.id, year: Number(year) })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error ?? 'Não foi possível inspecionar os cargos do arquivo.');
+      setInspections(previous => ({ ...previous, [resource.id]: payload as TseDownloadedInspection }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Falha ao inspecionar cargos.');
+    } finally {
+      setInspectingId(null);
     }
   };
 
@@ -174,6 +195,26 @@ export const TseDataTab: React.FC = () => {
                       <div className="flex items-center gap-2 font-semibold text-emerald-300"><CheckCircle2 className="h-4 w-4" />Download e hash concluídos</div>
                       <p className="mt-1 break-all text-slate-400">SHA-256: <span className="font-mono text-slate-300">{manifest.sha256}</span></p>
                       <p className="mt-1 text-amber-200">Revisão de layout e validação de cobertura ainda pendentes.</p>
+                      {resource.format.toUpperCase().includes('CSV') && (
+                        <button onClick={() => void inspectCargos(resource)} disabled={inspectingId !== null} className="mt-3 inline-flex items-center gap-2 rounded-md border border-slate-700 px-3 py-2 text-slate-200 hover:bg-slate-800 disabled:opacity-50">
+                          {inspectingId === resource.id ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
+                          {inspectingId === resource.id ? 'Inspecionando arquivo...' : 'Identificar cargos presentes'}
+                        </button>
+                      )}
+                      {inspections[resource.id] && (
+                        <div className="mt-3 border-t border-slate-700 pt-3">
+                          <p className="font-semibold text-slate-200">{inspections[resource.id].cargos.length} códigos de cargo encontrados em {inspections[resource.id].total_registros.toLocaleString('pt-BR')} registros.</p>
+                          <ul className="mt-2 space-y-1 text-slate-400">
+                            {inspections[resource.id].cargos.map(cargo => (
+                              <li key={cargo.cd_cargo} className="flex flex-wrap justify-between gap-2">
+                                <span><strong className="text-slate-200">{cargo.cd_cargo}</strong> — {cargo.ds_cargo ?? 'Descrição não disponível no arquivo'}</span>
+                                <span>{cargo.registros_observados.toLocaleString('pt-BR')} registros</span>
+                              </li>
+                            ))}
+                          </ul>
+                          <p className="mt-2 text-amber-200">A lista mostra apenas cargos observados neste arquivo; não comprova cobertura integral do pleito.</p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

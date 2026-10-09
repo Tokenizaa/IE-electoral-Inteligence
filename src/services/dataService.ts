@@ -136,7 +136,7 @@ export class DataService {
       resultados_municipais: resultadosMunicipais,
       quociente_eleitoral_estado: null,
       limites_metodologicos: [
-        'A base atual reflete a amostra representativa homologada de 2022 no RS.',
+        'A base carregada é uma amostra parcial de municípios do RS em 2022; não foi demonstrada representatividade estatística nem cobertura estadual completa.',
         'O HHI espacial afere concentração territorial dos votos obtidos, não lealdade política individual.',
         'A votação nominal expressa o Boletim de Urna oficial homologado pelo TSE.'
       ]
@@ -228,8 +228,8 @@ export class DataService {
     const deltaReport = AnalyticalEngine.calculateComparativeDelta(votosT1, votosT2, munValidosT1, munValidosT2);
 
     return {
-      candidato_t1: 'Ciclo T1 (2018 Referência)',
-      candidato_t2: 'Ciclo T2 (2022 Oficial)',
+      candidato_t1: 'Entrada T1 (não validada para comparação histórica)',
+      candidato_t2: 'Entrada T2 (não validada para comparação histórica)',
       votos_t1: votosT1,
       votos_t2: votosT2,
       delta_absoluto: deltaReport.delta_absoluto,
@@ -369,7 +369,7 @@ Responda em formato JSON estrito com as seguintes chaves:
         timestamp: new Date().toISOString(),
         modelo_ia_utilizado: 'Falha no Provedor Gemini (Fallback Determinístico Ativado)',
         status_ia: 'IA_INDISPONIVEL_RELATORIO_DETERMINISTICO',
-        resumo_executivo: `O candidato ${analysis.candidate.nm_urna_candidato} (${analysis.candidate.sg_partido}) obteve ${analysis.total_votos_amostra.toLocaleString()} votos nominais na base homologada. Classificação espacial: "${analysis.classificacao_espacial}" com HHI de ${analysis.hhi_concentracao}.`,
+        resumo_executivo: `O candidato ${analysis.candidate.nm_urna_candidato} (${analysis.candidate.sg_partido}) obteve ${analysis.total_votos_amostra.toLocaleString()} votos nominais nos registros da amostra carregada; esse total não representa a votação estadual completa. Classificação espacial: "${analysis.classificacao_espacial}" com HHI de ${analysis.hhi_concentracao}.`,
         diagnostico_territorial: `O principal reduto eleitoral foi ${analysis.maior_reduto_nome}, com ${analysis.pct_maior_reduto}% de todos os votos nominais do candidato (${evidenceBundle.top_municipios[0]?.votos.toLocaleString()} votos).`,
         analise_institucional: `Não é possível verificar o piso individual do QE: a amostra não contém a votação estadual completa necessária.`,
         evidencias_vinculadas: evidenceBundle,
@@ -378,7 +378,7 @@ Responda em formato JSON estrito com as seguintes chaves:
           'Todas as evidências numéricas foram calculadas por código determinístico auditado.',
           'Respeito rigoroso à separação entre evidência factual e hipótese interpretativa.'
         ],
-        conclusao_proporcional: `A candidatura apresenta forte concentração na Serra Gaúcha, dependendo de Caxias do Sul para ${analysis.pct_maior_reduto}% de sua votação.`,
+        conclusao_proporcional: `Na amostra disponível, ${analysis.pct_maior_reduto}% dos votos observados estão associados ao município de maior reduto registrado, ${analysis.maior_reduto_nome}; não se infere dependência eleitoral estadual.`,
         provencancia_arquivos: [
           'votacao_candidato_munzona_2022_RS_sample.csv',
           'consulta_cand_2022_RS_sample.csv',

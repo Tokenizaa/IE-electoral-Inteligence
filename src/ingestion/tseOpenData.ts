@@ -344,6 +344,7 @@ export class TseOpenDataClient {
     const finalPath = path.join(yearDir, basename);
     const partialPath = `${finalPath}.${randomUUID()}.part`;
     const hash = createHash('sha256');
+    let finalFileCreated = false;
     let sizeBytes = 0;
     const limiter = new Transform({
       transform: (chunk: Buffer, _encoding, callback) => {
@@ -362,6 +363,7 @@ export class TseOpenDataClient {
       const digest = hash.digest('hex');
       const signature = await this.validateFile(partialPath, extension);
       await rename(partialPath, finalPath);
+      finalFileCreated = true;
       const manifest: TseDownloadManifest = {
         source: 'Portal de Dados Abertos do TSE',
         resource_id: resourceId,
@@ -388,6 +390,9 @@ export class TseOpenDataClient {
       return manifest;
     } catch (error) {
       await rm(partialPath, { force: true });
+      // If manifest creation fails after the atomic rename, remove the orphan
+      // artifact so it cannot be mistaken for a completed, auditable download.
+      if (finalFileCreated) await rm(finalPath, { force: true });
       throw error;
     }
   }

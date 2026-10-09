@@ -172,7 +172,7 @@ function safeExtension(format: string, url: string): string {
   // resource path suffix when present; retain metadata separately for audit.
   try {
     const ext = path.extname(new URL(url).pathname).toLowerCase();
-    if (/^\\.(csv|zip|txt|json|7z|gz)$/.test(ext)) return ext;
+    if (/^\.(csv|zip|txt|json|7z|gz)$/.test(ext)) return ext;
   } catch {
     // URL validation happens separately.
   }

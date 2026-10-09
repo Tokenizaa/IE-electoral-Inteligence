@@ -133,3 +133,16 @@ Foi acrescentado `src/ingestion/tseLayoutRegistry.ts`, com perfis explícitos pa
 - A CI agora executa `tests/tse_layout_registry.test.ts`.
 
 **Limite importante:** os três perfis são assinaturas de amostras, não um catálogo oficial validado por ano/eleição/UF. Eles não autorizam a promoção dos arquivos para as tabelas analíticas, nem provam cobertura, integridade semântica ou reconciliação de votos. O próximo passo é testar o catálogo CKAN real e obter arquivos oficiais integrais representativos, comparar seus layouts e documentar a evidência antes de aprovar qualquer adaptador de ingestão.
+
+### Verificação ao vivo do catálogo e correções de seleção de recurso
+
+Em 2026-10-09 foi feita uma consulta real à API CKAN do Portal de Dados Abertos do TSE, usando o endpoint público `package_search`. A resposta confirmou metadados de conjuntos com recursos nomeados por ano e também um caso em que o metadado `format` informa `CSV`, mas a URL do recurso termina em `.zip`.
+
+Correções publicadas após essa verificação:
+
+1. O catálogo passou a filtrar o ano no próprio recurso quando o conjunto é genérico, evitando incluir recursos de 2026 numa consulta de 2022 só porque outro recurso do mesmo conjunto menciona 2022.
+2. O endpoint de download aplica a mesma validação individual do ano; recursos ambíguos são bloqueados em vez de presumidos compatíveis.
+3. A extensão real do caminho HTTPS do recurso prevalece sobre o campo `format` genérico para identificar o contêiner baixado. A divergência continua registrada no manifesto.
+4. Foram acrescentados testes para impedir mistura de anos e para o caso de ZIP rotulado como CSV.
+
+A consulta ao catálogo oficial foi testada ao vivo; não foi realizado download integral de um recurso eleitoral real. Os testes de download usam respostas simuladas. A execução da CI que inclui as correções mais recentes ainda precisa terminar com sucesso antes de declarar a etapa tecnicamente verificada.

@@ -209,7 +209,7 @@ export default function App() {
                         </span>
                         <span className="text-[11px] flex items-center gap-1 text-emerald-400 font-medium">
                           <CheckCircle2 className="w-3 h-3" />
-                          {item.status}
+                          Pendente de validação independente
                         </span>
                       </div>
                       <h4 className="text-sm font-semibold text-white">

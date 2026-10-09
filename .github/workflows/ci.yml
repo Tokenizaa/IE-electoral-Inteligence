@@ -29,3 +29,6 @@ jobs:
 
       - name: Phase 3 data and methodology safeguards
         run: bun run test:phase3
+
+      - name: TSE Open Data catalog and download safeguards
+        run: bun run test:tse-open-data

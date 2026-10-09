@@ -102,7 +102,7 @@ Após a interrupção do agente por limite de cota, foi feita revisão direta do
 ### Estado de validação após as correções
 
 - **Código:** alterações gravadas na `main` em commits sequenciais.
-- **CI (TypeScript, build e testes de salvaguarda):** aprovada no GitHub Actions para o commit `9795fbeeca6ff93a7b1d0f80dfd4ef50784e70bf`; execução: https://github.com/Tokenizaa/IE-electoral-Inteligence/actions/runs/37977775189.
+- **CI (TypeScript, build e testes de salvaguarda):** TypeScript e build passaram; a suíte de salvaguardas também passou para o commit `360e107f318543f0832724a9baa34ee77beb18b1`; execução: https://github.com/Tokenizaa/IE-electoral-Inteligence/actions/runs/37978378711.
 - **Escopo dessa CI:** valida tipagem, build de produção e a suíte `tests/phase3_interface.test.ts`; não comprova cobertura eleitoral completa, reconciliação oficial ou validade científica de todos os indicadores.
 - **Cobertura eleitoral:** permanece amostra parcial do RS em 2022, sem evidência de representatividade estatística ou cobertura estadual completa.
 - **Geometria territorial:** indisponível; nenhum polígono esquemático deve ser apresentado como mapa oficial.

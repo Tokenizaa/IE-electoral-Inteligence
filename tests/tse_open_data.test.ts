@@ -79,6 +79,25 @@ async function run() {
     const unsafeClient = new TseOpenDataClient({ fetchImpl: unsafeFetch, downloadDir: tempDir });
     await assert.rejects(() => unsafeClient.downloadResource(resourceId, 2022), /URL HTTPS permitida/);
 
+    let downloadRequestCount = 0;
+    const redirectFetch: typeof fetch = async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith('/resource_show')) {
+        return Response.json({ success: true, result: resource });
+      }
+      if (url.pathname.endsWith('/package_show')) {
+        return Response.json({ success: true, result: pkg });
+      }
+      if (url.hostname === 'cdn.tse.jus.br') {
+        downloadRequestCount++;
+        return new Response(null, { status: 302, headers: { location: 'https://example.com/redirect-target' } });
+      }
+      throw new Error(`Unexpected URL should not be requested: ${url}`);
+    };
+    const redirectClient = new TseOpenDataClient({ fetchImpl: redirectFetch, downloadDir: tempDir });
+    await assert.rejects(() => redirectClient.downloadResource(resourceId, 2022), /domínio não autorizado/);
+    assert.equal(downloadRequestCount, 1, 'O cliente deve bloquear o destino externo antes de fazer a segunda requisição.');
+
     console.log('TSE Open Data catalog and downloader safeguards verified.');
   } finally {
     await rm(tempDir, { recursive: true, force: true });

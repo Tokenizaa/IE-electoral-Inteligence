@@ -30,6 +30,14 @@ async function runPhase3VerificationSuite() {
   assert.ok(Number.isFinite(analysis.total_votos_amostra) && analysis.total_votos_amostra >= 0);
   assert.ok(Number.isFinite(analysis.hhi_concentracao));
   assert.ok(analysis.hhi_concentracao >= 0 && analysis.hhi_concentracao <= 1);
+
+  const indicatorRows = await (dataService as any).db.query(
+    'SELECT manifest_sha256 FROM mart_indicadores_candidato WHERE id_eleicao = $1 AND sq_candidato = $2',
+    [electionId, candidate.sq_candidato]
+  );
+  assert.ok(indicatorRows.length > 0, 'O indicador deve registrar sua proveniência.');
+  assert.match(indicatorRows[0].manifest_sha256, /^[a-f0-9]{64}$/i, 'O manifesto deve ser um SHA-256 real, não um marcador textual.');
+  assert.notEqual(indicatorRows[0].manifest_sha256, 'SHA256_VERIFIED');
   assert.ok(Array.isArray(analysis.resultados_municipais));
   assert.equal(analysis.quociente_eleitoral_estado, null, 'QE estadual não deve ser inventado a partir da amostra.');
 

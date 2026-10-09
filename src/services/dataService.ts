@@ -308,6 +308,7 @@ REGRAS RÍGIDAS ANTI-ALUCINAÇÃO (INVIOLÁVEIS):
 3. Não faça afirmações de causalidade (ex: não diga que gastos, idade ou religião causaram votos).
 4. Não infira intenção ou voto individual de eleitores (falácia ecológica).
 5. Se uma informação não estiver presente, declare expressamente que o dado não está disponível.\n6. Os números pertencem a uma amostra municipal parcial do RS em 2022, não ao total estadual. Não afirme eleição, cadeira, quociente, elegibilidade, tendência ou dependência estadual com base nesta amostra.
+7. O HHI é exploratório e descreve apenas a distribuição dos votos observados entre municípios da amostra. Não classifique o HHI como baixo, moderado ou alto: os limiares qualitativos não foram validados.
 
 EVIDÊNCIAS ESTRUTURADAS:
 ${JSON.stringify(evidenceBundle, null, 2)}

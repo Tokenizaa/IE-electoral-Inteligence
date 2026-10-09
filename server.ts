@@ -7,7 +7,6 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { DataService } from './src/services/dataService.ts';
-import { RS_MUNICIPALITIES_GEO } from './src/data/geoData.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -91,23 +90,17 @@ async function startServer() {
     }
   });
 
-  // Historical & Comparative Delta
-  app.get('/api/comparisons', (req, res) => {
-    const v1 = parseInt(req.query.v1 as string, 10) || 31000;
-    const v2 = parseInt(req.query.v2 as string, 10) || 36900;
-    const m1 = parseInt(req.query.m1 as string, 10) || 210000;
-    const m2 = parseInt(req.query.m2 as string, 10) || 225000;
-    try {
-      const comp = dataService.getComparativeAnalysis(v1, v2, m1, m2);
-      res.json(comp);
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
-    }
+  // Historical comparisons remain blocked until compatible official datasets are available.
+  app.get('/api/comparisons', (_req, res) => {
+    res.status(409).json({
+      error: 'Comparação histórica indisponível: ainda não existem bases completas e metodologicamente compatíveis para os dois pleitos.',
+      comparacao_valida: false
+    });
   });
 
   // Geographic Vector Features
   app.get('/api/territory/geo', (req, res) => {
-    res.json(RS_MUNICIPALITIES_GEO);
+    res.json([]);
   });
 
   // AI-Assisted Report Generation (Gemini via Server-side Proxy)

@@ -8,7 +8,6 @@ import { GoogleGenAI } from '@google/genai';
 import { ElectoralDatabase } from '../db/database.ts';
 import { IngestionPipeline } from '../ingestion/pipeline.ts';
 import { AnalyticalEngine } from '../analytics/analyticalEngine.ts';
-import { ElectoralEngine, PartyVoteTally } from '../electoral/electoralEngine.ts';
 import {
   CandidateItem,
   CandidateAnalysisResponse,
@@ -135,7 +134,7 @@ export class DataService {
       maior_reduto_nome: hhiReport.maior_reduto_nome,
       pct_maior_reduto: hhiReport.pct_maior_reduto,
       resultados_municipais: resultadosMunicipais,
-      quociente_eleitoral_estado: 32540,
+      quociente_eleitoral_estado: null,
       limites_metodologicos: [
         'A base atual reflete a amostra representativa homologada de 2022 no RS.',
         'O HHI espacial afere concentração territorial dos votos obtidos, não lealdade política individual.',
@@ -218,62 +217,11 @@ export class DataService {
     };
   }
 
-  public async getElectoralDistribution(ano: number = 2022, totalVagas: number = 4) {
+  public async getElectoralDistribution(_ano: number = 2022, _totalVagas: number = 4) {
     await this.ensureDataLoaded();
-    const partyTallies: PartyVoteTally[] = [
-      {
-        nr_partido: 15,
-        sg_partido: 'MDB',
-        votos_nominais: 36900,
-        votos_legenda: 3450,
-        total_votos: 40350,
-        candidatos_nominais: [
-          { sq_candidato: 210001610488, nm_urna: 'CARLOS BURIGO', votos: 36900 }
-        ]
-      },
-      {
-        nr_partido: 13,
-        sg_partido: 'PT',
-        votos_nominais: 38100,
-        votos_legenda: 4300,
-        total_votos: 42400,
-        candidatos_nominais: [
-          { sq_candidato: 210001607812, nm_urna: 'PEPE VARGAS', votos: 38100 }
-        ]
-      },
-      {
-        nr_partido: 22,
-        sg_partido: 'PL',
-        votos_nominais: 21400,
-        votos_legenda: 3750,
-        total_votos: 25150,
-        candidatos_nominais: [
-          { sq_candidato: 210001613990, nm_urna: 'RODRIGO LORENZONI', votos: 21400 }
-        ]
-      },
-      {
-        nr_partido: 11,
-        sg_partido: 'PP',
-        votos_nominais: 7670,
-        votos_legenda: 1840,
-        total_votos: 9510,
-        candidatos_nominais: [
-          { sq_candidato: 210001611005, nm_urna: 'SILVANA COVATTI', votos: 7670 }
-        ]
-      },
-      {
-        nr_partido: 10,
-        sg_partido: 'REPUBLICANOS',
-        votos_nominais: 11200,
-        votos_legenda: 1550,
-        total_votos: 12750,
-        candidatos_nominais: [
-          { sq_candidato: 210001612450, nm_urna: 'SERGIO PERES', votos: 11200 }
-        ]
-      }
-    ];
-
-    return ElectoralEngine.calculateDistribution(ano, totalVagas, partyTallies);
+    throw new Error(
+      'Distribuição de cadeiras indisponível: a base atual é uma amostra municipal e não contém evidência completa de votos válidos e candidaturas para calcular o resultado oficial da circunscrição.'
+    );
   }
 
   public getComparativeAnalysis(votosT1: number, votosT2: number, munValidosT1: number, munValidosT2: number): ComparativeAnalysisResponse {

@@ -28,7 +28,7 @@ A Fundação Científica e Arquitetural da plataforma **Inteligência Eleitoral*
 
 ## 2. Documentação da Fase 3
 
-A interface analítica está em implementação, com cobertura parcial. A auditoria corretiva independente está registrada em [AUDITORIA_FASE_3_ESTADO_E_BLOQUEIOS.md](./AUDITORIA_FASE_3_ESTADO_E_BLOQUEIOS.md). O mapa cartográfico, a comparação histórica e a simulação proporcional permanecem bloqueados até haver dados oficiais completos e compatíveis. O HHI é tratado como exploratório na amostra, sem classe qualitativa não validada, e a proveniência do indicador usa hash calculado dos arquivos registrados. A CI do GitHub Actions passou para o commit `9795fbeeca6ff93a7b1d0f80dfd4ef50784e70bf` (TypeScript, build e testes de salvaguarda), mas isso não valida a cobertura eleitoral nem conclui a Fase 3.
+A interface analítica está em implementação, com cobertura parcial. A auditoria corretiva independente está registrada em [AUDITORIA_FASE_3_ESTADO_E_BLOQUEIOS.md](./AUDITORIA_FASE_3_ESTADO_E_BLOQUEIOS.md). O mapa cartográfico, a comparação histórica e a simulação proporcional permanecem bloqueados até haver dados oficiais completos e compatíveis. O HHI é exploratório na amostra, sem classe qualitativa não validada; percentuais municipais e partidários são apresentados como proporções dos registros amostrais, não como totais oficiais. O SHA-256 identifica arquivos locais ingeridos, sem provar autenticidade externa. A CI do GitHub Actions passou para o commit `360e107f318543f0832724a9baa34ee77beb18b1` (TypeScript, build e testes de salvaguarda), mas isso não valida a cobertura eleitoral nem conclui a Fase 3.
 
 ## 3. Princípios Norteadores Intransponíveis
 

@@ -152,7 +152,7 @@ async function runPhase2VerificationSuite() {
   // Carlos Búrigo SQ: 210001610488
   const hhiReport = await analytics.computeCandidateHHI('2022_1T_GERAL', 210001610488, 7);
   console.log(`  -> Candidato: CARLOS BÚRIGO (SQ: ${hhiReport.sq_candidato})`);
-  console.log(`     Total Votos na Amostra: ${hhiReport.total_votos_estado.toLocaleString()}`);
+  console.log(`     Total Votos na Amostra: ${hhiReport.total_votos_amostra.toLocaleString()}`);
   console.log(`     HHI de Concentração Espacial: ${hhiReport.hhi_concentracao}`);
   console.log(`     Classificação Espacial: ${hhiReport.classificacao_espacial}`);
   console.log(`     Municípios com Votação: ${hhiReport.municipios_com_voto}`);

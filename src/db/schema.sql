@@ -151,7 +151,7 @@ CREATE TABLE IF NOT EXISTS mart_votacao_candidato_mun (
     cd_ibge INTEGER NOT NULL REFERENCES dim_municipio_tse_ibge(cd_ibge),
     cd_tse INTEGER NOT NULL,
     qt_votos_nominais INTEGER NOT NULL CHECK (qt_votos_nominais >= 0),
-    pct_sobre_validos_mun NUMERIC(6, 4) NOT NULL CHECK (pct_sobre_validos_mun >= 0 AND pct_sobre_validos_mun <= 100),
+    pct_sobre_registros_amostra_mun NUMERIC(6, 4) NOT NULL CHECK (pct_sobre_registros_amostra_mun >= 0 AND pct_sobre_registros_amostra_mun <= 100),
     pct_sobre_votos_candidato NUMERIC(6, 4) NOT NULL CHECK (pct_sobre_votos_candidato >= 0 AND pct_sobre_votos_candidato <= 100),
     ranking_no_municipio INTEGER NOT NULL,
     data_atualizacao TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,

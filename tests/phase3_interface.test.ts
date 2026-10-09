@@ -40,6 +40,11 @@ async function runPhase3VerificationSuite() {
   assert.match(indicatorRows[0].manifest_sha256, /^[a-f0-9]{64}$/i, 'O manifesto deve ser um SHA-256 real, não um marcador textual.');
   assert.notEqual(indicatorRows[0].manifest_sha256, 'SHA256_VERIFIED');
   assert.ok(Array.isArray(analysis.resultados_municipais));
+  assert.ok(analysis.resultados_municipais.every(result =>
+    Number.isFinite(result.pct_sobre_registros_amostra_mun) &&
+    result.pct_sobre_registros_amostra_mun >= 0 &&
+    result.pct_sobre_registros_amostra_mun <= 100
+  ), 'Percentuais municipais devem se referir apenas aos registros presentes na amostra.');
   assert.equal(analysis.quociente_eleitoral_estado, null, 'QE estadual não deve ser inventado a partir da amostra.');
 
   const comparison = dataService.getComparativeAnalysis(100, 120, 1000, 1100);

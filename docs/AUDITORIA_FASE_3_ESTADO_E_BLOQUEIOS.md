@@ -122,3 +122,14 @@ Foi implementada uma primeira camada reutilizável de aquisição de fontes, sem
 - **Comparações históricas e distribuição de cadeiras:** bloqueadas até ingestão e validação de dados compatíveis.
 - **Fase 3:** **não concluída**. Build e testes básicos passam, mas ainda faltam validação funcional mais ampla, reconciliação independente com fontes oficiais e fechamento dos bloqueios metodológicos.
 
+## 8. Etapa seguinte — registro de layouts versionados e validação estrutural (2026-10-09)
+
+Foi acrescentado `src/ingestion/tseLayoutRegistry.ts`, com perfis explícitos para três cabeçalhos encontrados nos arquivos amostrais existentes do RS/2022: candidaturas, votação nominal por município/zona e detalhe de apuração por município/zona.
+
+- Cada perfil tem identificador versionado, colunas obrigatórias e assinatura do cabeçalho.
+- O validador calcula SHA-256 do cabeçalho normalizado e distingue assinatura de amostra conhecida, colunas obrigatórias compatíveis mas não verificadas, layout desconhecido, colunas ausentes e nomes duplicados.
+- O endpoint `POST /api/tse/validate-layout` usa o arquivo já baixado e inspecionado; ele não aceita cabeçalhos enviados livremente pelo cliente.
+- Os perfis têm `ingestion_approved: false`. Mesmo uma correspondência exata apenas demonstra igualdade estrutural com uma amostra do repositório.
+- A CI agora executa `tests/tse_layout_registry.test.ts`.
+
+**Limite importante:** os três perfis são assinaturas de amostras, não um catálogo oficial validado por ano/eleição/UF. Eles não autorizam a promoção dos arquivos para as tabelas analíticas, nem provam cobertura, integridade semântica ou reconciliação de votos. O próximo passo é testar o catálogo CKAN real e obter arquivos oficiais integrais representativos, comparar seus layouts e documentar a evidência antes de aprovar qualquer adaptador de ingestão.

@@ -26,8 +26,8 @@ async function startServer() {
     res.json({
       status: 'ok',
       engine: 'PostgreSQL 18 (PGlite WASM)',
-      cobertura: 'RS 2022 Sample Auditada (100% Oficial TSE)',
-      metodologia: 'Protocolo Científico em 9 Etapas'
+      cobertura: 'Amostra parcial do RS, eleições gerais de 2022; cobertura estadual/nacional completa não validada.',
+      metodologia: 'Resultados sujeitos às limitações documentadas da amostra.'
     });
   });
 

@@ -50,7 +50,7 @@ export interface CandidateAnalysisResponse {
   maior_reduto_nome: string;
   pct_maior_reduto: number;
   resultados_municipais: CandidateMunicipalResult[];
-  quociente_eleitoral_estado: number;
+  quociente_eleitoral_estado: number | null;
   limites_metodologicos: string[];
 }
 

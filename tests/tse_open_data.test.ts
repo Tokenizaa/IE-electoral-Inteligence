@@ -27,6 +27,7 @@ async function run() {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'tse-open-data-'));
   const csv = 'ANO_ELEICAO;CD_CARGO;DS_CARGO;SQ_CANDIDATO;QT_VOTOS_NOMINAIS_VALIDOS\n2022;7;DEPUTADO ESTADUAL;12345;10\n2022;1;PRESIDENTE;12346;20\n2022;7;DEPUTADO ESTADUAL;12347;5\n';
 
+  let sourceDownloadCount = 0;
   const mockFetch: typeof fetch = async (input) => {
     const url = new URL(String(input));
     if (url.pathname.endsWith('/package_search')) {
@@ -39,6 +40,7 @@ async function run() {
       return Response.json({ success: true, result: pkg });
     }
     if (url.hostname === 'cdn.tse.jus.br') {
+      sourceDownloadCount++;
       return new Response(csv, { status: 200, headers: { 'content-type': 'text/csv', 'content-length': String(Buffer.byteLength(csv)) } });
     }
     throw new Error(`Unexpected URL: ${url}`);
@@ -66,6 +68,16 @@ async function run() {
     assert.equal(await readFile(manifest.local_file, 'utf8'), csv);
     const savedManifest = JSON.parse(await readFile(`${manifest.local_file}.manifest.json`, 'utf8'));
     assert.equal(savedManifest.sha256, manifest.sha256);
+
+    // The same resource and unchanged CKAN metadata must reuse the retained
+    // artifact rather than downloading a duplicate copy.
+    const reusedManifest = await client.downloadResource(resourceId, 2022);
+    assert.equal(reusedManifest.local_file, manifest.local_file);
+    assert.equal(sourceDownloadCount, 1, 'Um recurso inalterado não deve ser baixado novamente.');
+    const inventory = await client.listStoredResources(2022);
+    assert.equal(inventory.length, 1);
+    assert.equal(inventory[0].artifact_status, 'AVAILABLE');
+    assert.equal(inventory[0].manifest.sha256, manifest.sha256);
 
     const inspection = await client.inspectDownloadedResource(resourceId, 2022);
     assert.equal(inspection.total_registros, 3);

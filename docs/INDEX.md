@@ -23,12 +23,15 @@ A Fundação Científica e Arquitetural da plataforma **Inteligência Eleitoral*
 | **08** | [`08_CRITERIOS_DE_ACEITE_FASE_2.md`](./08_CRITERIOS_DE_ACEITE_FASE_2.md) | Respostas formais aos critérios de encerramento da Fase 1, incertezas residuais e checklist vinculante para o início da modelagem e ingestão na Fase 2. |
 | **Audit** | [`AUDITORIA_FASE_2_ESTADO_E_BLOQUEIOS.md`](./AUDITORIA_FASE_2_ESTADO_E_BLOQUEIOS.md) | Auditoria do estado real de partida da Fase 2, bloqueios superados e reuso do repositório base. |
 | **09** | [`09_EVIDENCIAS_E_RELATORIO_FASE_2.md`](./09_EVIDENCIAS_E_RELATORIO_FASE_2.md) | Relatório canônico de evidências empíricas da Fase 2: testes executados, motores validados e publicações remotas. |
+| **10** | [`10_REPOSITORIO_ELEITORAL_SOB_DEMANDA.md`](./10_REPOSITORIO_ELEITORAL_SOB_DEMANDA.md) | Política de aquisição seletiva, repositório local de arquivos oficiais, reutilização de downloads e limites da leitura sob demanda. |
 
 ---
 
 ## 2. Documentação da Fase 3
 
 A interface analítica está em implementação, com cobertura parcial. A auditoria corretiva independente está registrada em [AUDITORIA_FASE_3_ESTADO_E_BLOQUEIOS.md](./AUDITORIA_FASE_3_ESTADO_E_BLOQUEIOS.md). A aba **Fontes TSE** consulta dinamicamente o catálogo CKAN oficial por ano e permite baixar recursos com hash e validação estrutural inicial; esses arquivos ainda não são promovidos automaticamente à camada analítica. O mapa, a comparação histórica e a simulação proporcional permanecem bloqueados até haver dados oficiais completos e compatíveis. O HHI é exploratório na amostra, sem classe qualitativa não validada; percentuais municipais e partidários são proporções dos registros amostrais, não totais oficiais. SHA-256 identifica o arquivo baixado, mas não comprova sozinho autenticidade externa ou completude eleitoral. A aprovação técnica da CI não conclui a Fase 3.
+
+A política de aquisição seletiva e repositório local está especificada em [10_REPOSITORIO_ELEITORAL_SOB_DEMANDA.md](./10_REPOSITORIO_ELEITORAL_SOB_DEMANDA.md). A implementação atual mantém arquivos fora do Supabase, expõe inventário local por manifestos e reutiliza recursos inalterados; extração ZIP, leitura seletiva de registros e armazenamento persistente de produção continuam pendentes. Não confundir essa base técnica com ingestão analítica validada.
 
 ## 3. Princípios Norteadores Intransponíveis
 

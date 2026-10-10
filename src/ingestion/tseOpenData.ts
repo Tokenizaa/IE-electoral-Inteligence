@@ -343,6 +343,7 @@ export class TseOpenDataClient {
     const yearDir = path.resolve(this.downloadDir, String(year));
     const names = await readdir(yearDir).catch(() => [] as string[]);
     const stored: TseStoredResource[] = [];
+    const seenResourceIds = new Set<string>();
 
     for (const name of names.filter(item => item.endsWith('.manifest.json')).sort().reverse()) {
       const manifestPath = path.resolve(yearDir, name);
@@ -351,6 +352,10 @@ export class TseOpenDataClient {
           await (await import('node:fs/promises')).readFile(manifestPath, 'utf8')
         ) as TseDownloadManifest;
         if (manifest.requested_year !== year || !/^[a-f0-9-]{16,64}$/i.test(manifest.resource_id)) continue;
+        // Filenames contain an ISO timestamp; reverse lexical order yields the
+        // newest snapshot first. Keep only that snapshot in the UI inventory.
+        if (seenResourceIds.has(manifest.resource_id)) continue;
+        seenResourceIds.add(manifest.resource_id);
 
         const filePath = path.resolve(manifest.local_file);
         const relative = path.relative(yearDir, filePath);

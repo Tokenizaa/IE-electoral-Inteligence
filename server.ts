@@ -61,6 +61,21 @@ async function startServer() {
     }
   });
 
+  // Inventory of retained TSE source artifacts. This reads manifests only and does not
+  // contact the TSE or load large source files into memory.
+  app.get('/api/tse/downloads', async (req, res) => {
+    const year = Number.parseInt(String(req.query.year ?? ''), 10);
+    if (!Number.isInteger(year)) {
+      return res.status(400).json({ error: 'Informe o ano eleitoral em ?year=2022.' });
+    }
+    try {
+      res.setHeader('Cache-Control', 'no-store');
+      res.json(await tseOpenData.listStoredResources(year));
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
   // Download a resource selected from the live catalog; never accepts arbitrary URLs.
   app.post('/api/tse/download', async (req, res) => {
     const resourceId = String(req.body?.resource_id ?? '');

@@ -85,6 +85,8 @@ export interface TseDownloadManifest {
   dataset_title: string;
   resource_name: string;
   resource_url: string;
+  package_modified_at?: string | null;
+  resource_modified_at?: string | null;
   requested_year: number;
   detected_kind: TseResourceKind;
   format: string;
@@ -105,6 +107,14 @@ export interface TseCargoObservation {
   cd_cargo: string;
   ds_cargo: string | null;
   registros_observados: number;
+}
+
+export type TseStoredArtifactStatus = 'AVAILABLE' | 'MISSING' | 'SIZE_MISMATCH';
+
+export interface TseStoredResource {
+  manifest: TseDownloadManifest;
+  artifact_status: TseStoredArtifactStatus;
+  actual_size_bytes: number | null;
 }
 
 export interface TseDownloadedInspection {
@@ -321,6 +331,48 @@ export class TseOpenDataClient {
     return { resource, pkg };
   }
 
+  /**
+   * Lists the locally retained source artifacts for one election year.
+   * The inventory is derived from manifests; it never contacts the TSE or reads
+   * large data files into memory.
+   */
+  async listStoredResources(year: number): Promise<TseStoredResource[]> {
+    if (!Number.isInteger(year) || year < 1994 || year > new Date().getFullYear() + 1) {
+      throw new Error('Ano eleitoral inválido.');
+    }
+    const yearDir = path.resolve(this.downloadDir, String(year));
+    const names = await readdir(yearDir).catch(() => [] as string[]);
+    const stored: TseStoredResource[] = [];
+
+    for (const name of names.filter(item => item.endsWith('.manifest.json')).sort().reverse()) {
+      const manifestPath = path.resolve(yearDir, name);
+      try {
+        const manifest = JSON.parse(
+          await (await import('node:fs/promises')).readFile(manifestPath, 'utf8')
+        ) as TseDownloadManifest;
+        if (manifest.requested_year !== year || !/^[a-f0-9-]{16,64}$/i.test(manifest.resource_id)) continue;
+
+        const filePath = path.resolve(manifest.local_file);
+        const relative = path.relative(yearDir, filePath);
+        if (relative.startsWith('..') || path.isAbsolute(relative)) continue;
+
+        let actualSize: number | null = null;
+        let status: TseStoredArtifactStatus = 'MISSING';
+        try {
+          actualSize = (await stat(filePath)).size;
+          status = actualSize === manifest.size_bytes ? 'AVAILABLE' : 'SIZE_MISMATCH';
+        } catch {
+          status = 'MISSING';
+        }
+        stored.push({ manifest, artifact_status: status, actual_size_bytes: actualSize });
+      } catch {
+        // Ignore malformed manifests in the inventory; they are not trusted as paths.
+      }
+    }
+
+    return stored;
+  }
+
   async downloadResource(resourceId: string, year: number): Promise<TseDownloadManifest> {
     if (!Number.isInteger(year) || year < 1994 || year > new Date().getFullYear() + 1) {
       throw new Error('Ano eleitoral inválido.');
@@ -330,6 +382,18 @@ export class TseOpenDataClient {
       throw new Error(`O recurso não foi identificado individualmente como pertencente à eleição de ${year}; download bloqueado para evitar mistura de anos.`);
     }
     const url = String(resource.url);
+    // Reuse a retained artifact only when the source URL and published metadata
+    // still match. Otherwise acquire a new immutable snapshot instead of silently
+    // treating an old file as the current version.
+    const existing = (await this.listStoredResources(year)).find(item =>
+      item.manifest.resource_id === resourceId &&
+      item.artifact_status === 'AVAILABLE' &&
+      item.manifest.resource_url === url &&
+      (item.manifest as TseDownloadManifest & { package_modified_at?: string | null }).package_modified_at === (pkg.metadata_modified ?? null) &&
+      (item.manifest as TseDownloadManifest & { resource_modified_at?: string | null }).resource_modified_at === (resource.last_modified ?? null)
+    );
+    if (existing) return existing.manifest;
+
     const response = await this.fetchTseDownload(url);
     if (!response.ok || !response.body) throw new Error(`Falha ao baixar recurso TSE: HTTP ${response.status}.`);
 
@@ -371,6 +435,8 @@ export class TseOpenDataClient {
         dataset_title: String(pkg.title ?? pkg.name ?? ''),
         resource_name: String(resource.name ?? ''),
         resource_url: url,
+        package_modified_at: pkg.metadata_modified ?? null,
+        resource_modified_at: resource.last_modified ?? null,
         requested_year: year,
         detected_kind: classifyResource(String(resource.name ?? ''), String(resource.description ?? ''), String(resource.format ?? '')),
         format: String(resource.format ?? 'Desconhecido').toUpperCase(),

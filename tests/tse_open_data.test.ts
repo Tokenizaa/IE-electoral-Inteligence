@@ -157,7 +157,9 @@ async function run() {
       }
       throw new Error(`Unexpected URL should not be requested: ${url}`);
     };
-    const redirectClient = new TseOpenDataClient({ fetchImpl: redirectFetch, downloadDir: tempDir });
+    // Isolate this case from the previously downloaded resource: otherwise
+    // idempotent reuse would correctly skip the redirect path being tested.
+    const redirectClient = new TseOpenDataClient({ fetchImpl: redirectFetch, downloadDir: path.join(tempDir, 'redirect-test') });
     await assert.rejects(() => redirectClient.downloadResource(resourceId, 2022), /domínio não autorizado/);
     assert.equal(downloadRequestCount, 1, 'O cliente deve bloquear o destino externo antes de fazer a segunda requisição.');
 

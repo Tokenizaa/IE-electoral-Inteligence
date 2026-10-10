@@ -71,7 +71,7 @@ function infoFrom(entry: Entry): TseZipEntryInfo {
 }
 
 /** Rejects path traversal / absolute / backslash / drive-letter member names. */
-function assertSafeEntryName(name: string): void {
+export function assertSafeEntryName(name: string): void {
   if (!name) throw new Error('Membro ZIP com nome vazio rejeitado.');
   if (/^[A-Za-z]:/.test(name) || /^[/\\]/.test(name) || name.includes('\\') || name.split('/').includes('..')) {
     throw new Error(`Membro ZIP com nome inseguro (zip-slip) rejeitado: ${JSON.stringify(name)}`);
@@ -167,7 +167,13 @@ function nextEntry(zipfile: ZipFile): Promise<Entry | null> {
 export async function listZipEntries(source: TseZipSource, limits: Partial<TseZipLimits> = {}): Promise<TseZipEntryInfo[]> {
   const lim: TseZipLimits = { ...DEFAULT_ZIP_LIMITS, ...limits };
   const { path: zipPath, cleanup } = await resolveSource(source);
-  const zipfile = await openZip(zipPath);
+  let zipfile: ZipFile;
+  try {
+    zipfile = await openZip(zipPath);
+  } catch (error) {
+    await cleanup();
+    throw error;
+  }
   const entries: TseZipEntryInfo[] = [];
   let compressedTotal = 0;
   let uncompressedTotal = 0;
@@ -212,7 +218,13 @@ export async function readZipMember(
   const lim: TseZipLimits = { ...DEFAULT_ZIP_LIMITS, ...limits };
   assertSafeEntryName(memberName);
   const { path: zipPath, cleanup } = await resolveSource(source);
-  const zipfile = await openZip(zipPath);
+  let zipfile: ZipFile;
+  try {
+    zipfile = await openZip(zipPath);
+  } catch (error) {
+    await cleanup();
+    throw error;
+  }
   try {
     for (;;) {
       const entry = await nextEntry(zipfile);

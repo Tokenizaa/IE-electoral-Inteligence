@@ -14,6 +14,7 @@ import { createInterface } from 'node:readline';
 import { pipeline } from 'node:stream/promises';
 import { readCsvHeader } from './tseCsvStream.ts';
 import { DEFAULT_ZIP_LIMITS, listZipEntries, materializeZipSource, readZipMember, type TseZipEntryInfo, type TseZipLimits, type TseZipSource } from './tseZipReader.ts';
+import { selectZipCsvRows, type TseSelectOptions, type TseSelectSummary } from './tseSelectiveReader.ts';
 import { validateTseLayout, type TseLayoutValidation } from './tseLayoutRegistry.ts';
 import type { TseObjectStorage } from '../storage/tseStorageAdapter.ts';
 
@@ -607,6 +608,65 @@ export class TseOpenDataClient {
   }
 
   /**
+   * Resolves the retained ZIP source for a (year, resource_id) pair — either
+   * from the injected storage adapter (materialized to a temp spool once) or
+   * from the local retained-download directory. Never accepts client paths.
+   */
+  private async resolveStoredZipSource(
+    resourceId: string,
+    year: number,
+    storage?: TseObjectStorage
+  ): Promise<{
+    zipSource: TseZipSource;
+    zipFileName: string;
+    datasetTitle: string;
+    zipSha256: string;
+    zipSizeBytes: number;
+    resourceUrl: string | null;
+    spool: { path: string; cleanup: () => Promise<void> } | null;
+  }> {
+    if (storage) {
+      const prefix = `tse/${year}/${resourceId}/`;
+      const keys = (await storage.list(prefix)).filter(key => key.endsWith('.zip'));
+      if (keys.length === 0) throw new Error('Nenhum artefato ZIP disponível foi encontrado para esse recurso e ano.');
+      const objectKey = keys[keys.length - 1];
+      const metadata = await storage.head(objectKey);
+      if (!metadata) throw new Error('O artefato ZIP de storage não possui manifesto auditável.');
+      const fetched = await storage.get(objectKey);
+      if (!fetched) throw new Error('Não foi possível ler o artefato ZIP do storage.');
+      // Materialize the remote stream once: the archive is read twice (listing + member reads).
+      const spool = await materializeZipSource(fetched.stream);
+      return {
+        zipSource: spool.path,
+        zipFileName: path.basename(objectKey),
+        datasetTitle: metadata.dataset_title,
+        zipSha256: metadata.sha256,
+        zipSizeBytes: metadata.size_bytes,
+        resourceUrl: metadata.resource_url,
+        spool
+      };
+    }
+    const stored = await this.listStoredResources(year);
+    const item = stored.find(candidate => candidate.manifest.resource_id === resourceId && candidate.artifact_status === 'AVAILABLE');
+    if (!item) throw new Error('Nenhum artefato disponível foi encontrado para esse recurso e ano.');
+    const manifest = item.manifest;
+    const zipPath = path.resolve(manifest.local_file);
+    const yearDir = path.resolve(this.downloadDir, String(year));
+    const relative = path.relative(yearDir, zipPath);
+    if (relative.startsWith('..') || path.isAbsolute(relative)) throw new Error('O manifesto aponta para um arquivo fora do diretório de downloads permitido.');
+    if (path.extname(zipPath).toLowerCase() !== '.zip') throw new Error('A inspeção de ZIP exige um container ZIP retido; o recurso baixado não é ZIP.');
+    return {
+      zipSource: zipPath,
+      zipFileName: path.basename(zipPath),
+      datasetTitle: manifest.dataset_title,
+      zipSha256: manifest.sha256,
+      zipSizeBytes: manifest.size_bytes,
+      resourceUrl: manifest.resource_url,
+      spool: null
+    };
+  }
+
+  /**
    * Inspects a retained ZIP artifact without extracting it: lists members from
    * the central directory, then reads ONLY the header line of each internal CSV
    * (streamed) and validates each layout against the sample-only registry.
@@ -618,45 +678,14 @@ export class TseOpenDataClient {
     const lim: TseZipLimits = { ...DEFAULT_ZIP_LIMITS, ...(options.limits ?? {}) };
 
     // Source resolution: R2/pluggable storage or the local retained-download dir.
-    let zipSource: TseZipSource = '';
-    let zipFileName = '';
-    let datasetTitle = '';
-    let zipSha256 = '';
-    let zipSizeBytes = 0;
-    let spool: { path: string; cleanup: () => Promise<void> } | null = null;
+    const resolved = await this.resolveStoredZipSource(resourceId, year, options.storage);
+    const zipSource = resolved.zipSource;
+    const zipFileName = resolved.zipFileName;
+    const datasetTitle = resolved.datasetTitle;
+    const zipSha256 = resolved.zipSha256;
+    const zipSizeBytes = resolved.zipSizeBytes;
+    let spool: { path: string; cleanup: () => Promise<void> } | null = resolved.spool;
     try {
-      if (options.storage) {
-      const prefix = `tse/${year}/${resourceId}/`;
-      const keys = (await options.storage.list(prefix)).filter(key => key.endsWith('.zip'));
-      if (keys.length === 0) throw new Error('Nenhum artefato ZIP disponível foi encontrado para esse recurso e ano.');
-      const objectKey = keys[keys.length - 1];
-      const metadata = await options.storage.head(objectKey);
-      if (!metadata) throw new Error('O artefato ZIP de storage não possui manifesto auditável.');
-      const fetched = await options.storage.get(objectKey);
-      if (!fetched) throw new Error('Não foi possível ler o artefato ZIP do storage.');
-      // Materialize the remote stream once: the archive is read twice (listing + member headers).
-      spool = await materializeZipSource(fetched.stream);
-      zipSource = spool.path;
-      zipFileName = path.basename(objectKey);
-      datasetTitle = metadata.dataset_title;
-      zipSha256 = metadata.sha256;
-      zipSizeBytes = metadata.size_bytes;
-    } else {
-      const stored = await this.listStoredResources(year);
-      const item = stored.find(candidate => candidate.manifest.resource_id === resourceId && candidate.artifact_status === 'AVAILABLE');
-      if (!item) throw new Error('Nenhum artefato disponível foi encontrado para esse recurso e ano.');
-      const manifest = item.manifest;
-      const zipPath = path.resolve(manifest.local_file);
-      const yearDir = path.resolve(this.downloadDir, String(year));
-      const relative = path.relative(yearDir, zipPath);
-      if (relative.startsWith('..') || path.isAbsolute(relative)) throw new Error('O manifesto aponta para um arquivo fora do diretório de downloads permitido.');
-      if (path.extname(zipPath).toLowerCase() !== '.zip') throw new Error('A inspeção de ZIP exige um container ZIP retido; o recurso baixado não é ZIP.');
-      zipSource = zipPath;
-      zipFileName = path.basename(zipPath);
-      datasetTitle = manifest.dataset_title;
-      zipSha256 = manifest.sha256;
-      zipSizeBytes = manifest.size_bytes;
-    }
 
     const members = await listZipEntries(zipSource, lim);
     const totals = members.reduce(
@@ -676,16 +705,18 @@ export class TseOpenDataClient {
         try {
           const headerResult = await readCsvHeader(stream, 128 * 1024);
           const selected = headerResult.header.length >= 2 &&
-            headerResult.header.some(column => /^(ANO_ELEICAO|CD_CARGO|SQ_CANDIDATO|QT_VOTOS)/.test(column.toUpperCase()));
+            headerResult.header.some(column => /^(ANO_ELEICAO|CD_CARGO|SQ_CANDIDATO|QT_VOTOS)/.test(column));
           csvs.push({
             member_name: member.name,
             selected,
             reason: selected ? null : 'Cabeçalho sem colunas características de layout eleitoral TSE.',
-            header: headerResult.header,
+            // `header` expõe os nomes oficiais literais; a validação de layout recebe
+            // os mesmos valores brutos (validateTseLayout normaliza por conta própria).
+            header: headerResult.raw_header,
             delimiter: headerResult.delimiter,
             encoding: headerResult.encoding,
             detected_kind: detectedKind,
-            layout: selected ? validateTseLayout(year, layoutKindFor(detectedKind), headerResult.header) : null
+            layout: selected ? validateTseLayout(year, layoutKindFor(detectedKind), headerResult.raw_header) : null
           });
         } finally {
           stream.destroy();
@@ -723,6 +754,39 @@ export class TseOpenDataClient {
         'A validação de layout usa perfis de amostra do repositório; nenhum resultado autoriza ingestão automática.'
       ]
     };
+    } finally {
+      if (spool) await spool.cleanup();
+    }
+  }
+
+  /**
+   * Streaming selective read of one CSV member inside a retained ZIP. Resolves
+   * the same retained artifact as {@link inspectStoredZip} (local dir or the
+   * injected storage adapter) and delegates to {@link selectZipCsvRows}.
+   * Accepts only a validated (year, resource_id) pair — never client paths.
+   */
+  async *selectStoredZipRows(
+    resourceId: string,
+    year: number,
+    memberName: string,
+    options: TseSelectOptions & { storage?: TseObjectStorage } = {}
+  ): AsyncGenerator<string[][], TseSelectSummary, void> {
+    if (!/^[a-f0-9-]{16,64}$/i.test(resourceId)) throw new Error('Identificador de recurso CKAN inválido.');
+    if (!Number.isInteger(year) || year < 1994 || year > new Date().getFullYear() + 1) throw new Error('Ano eleitoral inválido.');
+
+    const resolved = await this.resolveStoredZipSource(resourceId, year, options.storage);
+    const spool = resolved.spool;
+    try {
+      const summary = yield* selectZipCsvRows(resolved.zipSource, memberName, {
+        ...options,
+        source: {
+          resource_id: resourceId,
+          year,
+          zip_sha256: resolved.zipSha256,
+          resource_url: resolved.resourceUrl
+        }
+      });
+      return summary;
     } finally {
       if (spool) await spool.cleanup();
     }

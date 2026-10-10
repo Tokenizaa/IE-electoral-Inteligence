@@ -14,7 +14,8 @@
     "test:tse-open-data": "tsx tests/tse_open_data.test.ts",
     "test:tse-layout": "tsx tests/tse_layout_registry.test.ts",
     "test:tse-storage": "tsx tests/tse_storage_adapter.test.ts",
-    "test:tse-zip": "tsx tests/tse_zip_reader.test.ts"
+    "test:tse-zip": "tsx tests/tse_zip_reader.test.ts",
+    "test:tse-select": "tsx tests/tse_selective_reader.test.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8",

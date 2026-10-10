@@ -41,3 +41,6 @@ jobs:
 
       - name: TSE secure ZIP reader safeguards
         run: bun run test:tse-zip
+
+      - name: TSE selective streaming reader safeguards
+        run: bun run test:tse-select

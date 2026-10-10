@@ -66,7 +66,7 @@ O inventário lê manifestos e metadados de tamanho; não varre o conteúdo de a
 
 - ~~Extração segura de ZIP e inspeção dos CSVs internos.~~ **Implementado** (seção 8): listagem de membros e leitura do cabeçalho em fluxo.
 - Parser CSV completo para campos com quebras de linha dentro de aspas (multilinha é **bloqueado** com erro claro, não suportado).
-- Leitura seletiva de linhas de CSV/ZIP a partir de filtros de análise (hoje lê-se o cabeçalho; filtro de linhas ainda pendente).
+- ~~Leitura seletiva de linhas de CSV/ZIP a partir de filtros de análise~~ **Implementado por coluna/valor** (seção 9b); ainda falta filtro por predicados compostos/faixas e agregação em fluxo.
 - Staging analítico persistente e publicação versionada de agregados.
 - ~~Armazenamento de objetos persistente para ambientes hospedados.~~ **Abstração implementada** (seção 7); R2 real depende de provisionamento.
 - Reconciliação de totais e cobertura por ano, cargo, turno e território.
@@ -132,6 +132,18 @@ Consequência: **R2 não está provisionado nem acessível neste ambiente**. Con
 - **Nunca extrai** para caminhos arbitrários: expõe apenas streams de membro. Fontes stream (remoto) são spooladas em arquivo temporário anônimo, removido após o uso.
 - `inspectStoredZip(resourceId, year)` (local ou storage injetado): lista membros, seleciona CSVs por extensão + cabeçalho, valida layout contra o registry (amostras, sem autorizar ingestão). Endpoint: `POST /api/tse/inspect-zip`.
 - **Leitura seletiva real:** ZIP não permite range query por membro sem percorrer o central directory; a leitura lista o diretório central e abre **em fluxo apenas o membro escolhido** — nada é prometido além disso.
+
+## 9b. Leitura seletiva por filtro e preservação de valores (Issue #3)
+
+`src/ingestion/tseSelectiveReader.ts` + ajustes em `tseCsvStream.ts`:
+
+- **Preservação literal:** `parseCsvRecord` (antes `parseCsvLine`) **não aplica `trim`** às células; espaços internos/iniciais/finais são dado oficial. `normalizeHeaderName` (BOM + trim + uppercase) é usado **somente** para comparar nomes de coluna. `readCsvHeader` retorna `raw_header` (literal) + `header` (normalizado).
+- **Leitura seletiva em streaming:** `selectZipCsvRows(source, memberName, options)` emite lotes (`batchSize`) filtrando por colunas em allowlist (`VOTACAO_NOMINAL_MUNICIPIO_ZONA_COLUMNS`), com `maxRows` (para cedo, `truncated: true`) e cancelamento seguro (destrói o stream e fecha o ZIP).
+- **Contrato/erros:** `TseSelectError { code, details }` — `COLUMN_NOT_ALLOWED`, `COLUMN_NOT_FOUND`, `DUPLICATE_COLUMN`, `EMPTY_HEADER`, `MEMBER_NOT_FOUND`, `MEMBER_TOO_LARGE` (com `size_bytes`/`max_member_bytes`/`alternatives`), `ZIP_BOMB`, `ZIP_READ_ERROR`. Sem truncar silenciosamente.
+- **Proveniência:** cada resumo inclui `source` (resource_id, year, resource_url, zip_sha256, membro, tamanho descompactado), `parser_version` (`tse-csv-stream/2-literal`), filtros e contagens lidas/aceitas/rejeitadas.
+- **Endpoint:** `POST /api/tse/select-zip` (valida `resource_id`/`year`/`member_name`/`limit`; nunca aceita caminhos do cliente).
+- **Limitação explícita:** filtrar linhas **não** evita baixar o ZIP original nem necessariamente descomprimir o membro por completo — o membro é lido sequencialmente em fluxo; não há consulta aleatória por linha. Campos com quebra de linha dentro de aspas continuam **bloqueados** (`MULTILINE_FIELD_ERROR`).
+- **Limite de membro:** `maxMemberBytes` default 3 GiB permanece; membros maiores (ex.: `BRASIL.csv` 4,3 GiB) retornam erro estruturado com alternativa técnica, não truncamento.
 
 ## 10. Respostas do relatório da Issue #2
 

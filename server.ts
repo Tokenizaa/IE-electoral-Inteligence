@@ -9,6 +9,7 @@ import { fileURLToPath } from 'url';
 import { DataService } from './src/services/dataService.ts';
 import { TseOpenDataClient, type TseResourceKind } from './src/ingestion/tseOpenData.ts';
 import { validateTseLayout } from './src/ingestion/tseLayoutRegistry.ts';
+import { TseSelectError } from './src/ingestion/tseSelectiveReader.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -148,6 +149,73 @@ async function startServer() {
     } catch (err: any) {
       const message = String(err?.message ?? 'Falha ao validar o layout TSE.');
       const status = /inválido|não encontrado|exige CSV|não contém a coluna|fora do diretório/i.test(message) ? 400 : 422;
+      res.status(status).json({ error: message });
+    }
+  });
+
+  // Selective streaming read of one CSV member inside a retained ZIP. Filtered
+  // rows are returned in batches bounded by `limit` (default 1000 accepted rows);
+  // the member is streamed and never fully loaded. Accepts only a validated
+  // (resource_id, year) pair — never client paths. Column names must belong to
+  // the documented allowlist of the layout kind.
+  const SELECT_LIMIT_MAX = 50_000;
+  const TSE_SELECT_STATUS: Record<string, number> = {
+    COLUMN_NOT_ALLOWED: 400,
+    INVALID_OPTION: 400,
+    UNSAFE_MEMBER_NAME: 400,
+    COLUMN_NOT_FOUND: 422,
+    DUPLICATE_COLUMN: 422,
+    EMPTY_HEADER: 422,
+    MEMBER_NOT_FOUND: 422,
+    MEMBER_TOO_LARGE: 422,
+    ZIP_BOMB: 422,
+    ZIP_READ_ERROR: 502
+  };
+  app.post('/api/tse/select-zip', async (req, res) => {
+    const resourceId = String(req.body?.resource_id ?? '');
+    const year = Number.parseInt(String(req.body?.year ?? ''), 10);
+    const memberName = typeof req.body?.member_name === 'string' ? req.body.member_name.trim() : '';
+    const limit = req.body?.limit === undefined ? 1000 : Number(req.body?.limit);
+    if (!resourceId || !Number.isInteger(year)) {
+      return res.status(400).json({ error: 'Informe resource_id e year do catálogo do TSE.' });
+    }
+    if (!memberName) {
+      return res.status(400).json({ error: 'member_name é obrigatório (nome interno do membro CSV no ZIP).' });
+    }
+    if (!/^[a-f0-9-]{16,64}$/i.test(resourceId)) {
+      return res.status(400).json({ error: 'resource_id malformado.' });
+    }
+    if (!Number.isInteger(limit) || limit < 1 || limit > SELECT_LIMIT_MAX) {
+      return res.status(400).json({ error: `limit deve ser inteiro entre 1 e ${SELECT_LIMIT_MAX}.` });
+    }
+    try {
+      const options: any = {
+        batchSize: Math.min(limit, 1000),
+        maxRows: limit,
+        filters: Array.isArray(req.body?.filters) ? req.body.filters : undefined,
+        columns: Array.isArray(req.body?.columns) ? req.body.columns.map(String) : undefined
+      };
+      const batches: string[][][] = [];
+      let summary: any = null;
+      // `maxRows: limit` ends the generator after `limit` accepted rows (documented
+      // early stop), so we just drain it to capture both batches and the summary.
+      const iterator = tseOpenData.selectStoredZipRows(resourceId, year, memberName, options);
+      for (;;) {
+        const next = await iterator.next();
+        if (next.done) {
+          summary = next.value;
+          break;
+        }
+        batches.push(next.value);
+      }
+      res.json({ summary, batches });
+    } catch (err: any) {
+      if (err instanceof TseSelectError) {
+        const status = TSE_SELECT_STATUS[err.code] ?? 502;
+        return res.status(status).json({ error: { code: err.code, message: err.message, details: err.details } });
+      }
+      const message = String(err?.message ?? 'Falha na leitura seletiva do ZIP TSE.');
+      const status = /inválido|não foi encontrado|não possui|exige ZIP|fora do diretório/i.test(message) ? 400 : 422;
       res.status(status).json({ error: message });
     }
   });

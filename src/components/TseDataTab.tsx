@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Download, ExternalLink, LoaderCircle, RefreshCw, Search } from 'lucide-react';
-import type { TseCatalogResource, TseCatalogResult, TseResourceKind, TseDownloadManifest, TseDownloadedInspection } from '../ingestion/tseOpenData.ts';
+import type { TseCatalogResource, TseCatalogResult, TseResourceKind, TseDownloadManifest, TseDownloadedInspection, TseStoredResource } from '../ingestion/tseOpenData.ts';
 import type { TseLayoutValidation } from '../ingestion/tseLayoutRegistry.ts';
 
 const kinds: Array<{ value: '' | TseResourceKind; label: string }> = [
@@ -33,6 +33,7 @@ export const TseDataTab: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [downloads, setDownloads] = useState<Record<string, TseDownloadManifest>>({});
+  const [storedStatuses, setStoredStatuses] = useState<Record<string, TseStoredResource['artifact_status']>>({});
   const [inspections, setInspections] = useState<Record<string, TseDownloadedInspection>>({});
   const [layoutValidations, setLayoutValidations] = useState<Record<string, TseLayoutValidation>>({});
   const [inspectingId, setInspectingId] = useState<string | null>(null);
@@ -60,6 +61,35 @@ export const TseDataTab: React.FC = () => {
 
   useEffect(() => { void loadCatalog(); }, [loadCatalog]);
 
+  // The local inventory is read from manifests only; it does not fetch or scan
+  // large TSE datasets. This makes retained artifacts visible after a page reload.
+  useEffect(() => {
+    let active = true;
+    setDownloads({});
+    setStoredStatuses({});
+    fetch(`/api/tse/downloads?year=${encodeURIComponent(year)}`)
+      .then(async response => {
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error ?? 'Não foi possível consultar o repositório local.');
+        return payload as TseStoredResource[];
+      })
+      .then(inventory => {
+        if (!active) return;
+        const statuses: Record<string, TseStoredResource['artifact_status']> = {};
+        const available: Record<string, TseDownloadManifest> = {};
+        for (const item of inventory) {
+          statuses[item.manifest.resource_id] = item.artifact_status;
+          if (item.artifact_status === 'AVAILABLE') available[item.manifest.resource_id] = item.manifest;
+        }
+        setStoredStatuses(statuses);
+        setDownloads(available);
+      })
+      .catch(err => {
+        if (active) setError(err instanceof Error ? err.message : 'Falha ao consultar o repositório local.');
+      });
+    return () => { active = false; };
+  }, [year]);
+
   const resources = useMemo(() => {
     const query = searchText.trim().toLocaleLowerCase('pt-BR');
     if (!catalog) return [];
@@ -82,6 +112,7 @@ export const TseDataTab: React.FC = () => {
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error ?? 'Falha ao baixar o recurso.');
       setDownloads(previous => ({ ...previous, [resource.id]: payload as TseDownloadManifest }));
+      setStoredStatuses(previous => ({ ...previous, [resource.id]: 'AVAILABLE' }));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha ao baixar o recurso do TSE.');
     } finally {
@@ -212,10 +243,17 @@ export const TseDataTab: React.FC = () => {
                   <a href={resource.url} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-[11px] text-slate-400 underline decoration-slate-700 underline-offset-2 hover:text-slate-200">
                     Abrir recurso original <ExternalLink className="h-3 w-3" />
                   </a>
+                  {storedStatuses[resource.id] === 'MISSING' && (
+                    <p className="mt-3 text-xs text-amber-200">O manifesto existe, mas o arquivo local não foi encontrado. É necessário adquiri-lo novamente.</p>
+                  )}
+                  {storedStatuses[resource.id] === 'SIZE_MISMATCH' && (
+                    <p className="mt-3 text-xs text-amber-200">O tamanho do arquivo local diverge do manifesto. O artefato não será reutilizado automaticamente.</p>
+                  )}
                   {manifest && (
                     <div className="mt-3 rounded-lg border border-emerald-900/70 bg-emerald-950/20 p-3 text-xs">
                       <div className="flex items-center gap-2 font-semibold text-emerald-300"><CheckCircle2 className="h-4 w-4" />Download e hash concluídos</div>
-                      <p className="mt-1 break-all text-slate-400">SHA-256: <span className="font-mono text-slate-300">{manifest.sha256}</span></p>
+                      <p className="mt-1 break-all text-slate-400">SHA-256 registrado: <span className="font-mono text-slate-300">{manifest.sha256}</span></p>
+                      <p className="mt-1 text-slate-400">Arquivo já armazenado no repositório local; esta listagem verifica presença e tamanho, não recalcula o hash.</p>
                       <p className="mt-1 text-amber-200">Revisão de layout e validação de cobertura ainda pendentes.</p>
                       {manifest.local_file.toLowerCase().endsWith('.csv') && (
                         <button onClick={() => void inspectCargos(resource)} disabled={inspectingId !== null} className="mt-3 inline-flex items-center gap-2 rounded-md border border-slate-700 px-3 py-2 text-slate-200 hover:bg-slate-800 disabled:opacity-50">
@@ -258,7 +296,7 @@ export const TseDataTab: React.FC = () => {
                 </div>
                 <button onClick={() => void download(resource)} disabled={isDownloading || downloadingId !== null} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-emerald-700/70 bg-emerald-950/40 px-3 py-2.5 text-xs font-semibold text-emerald-200 hover:bg-emerald-900/50 disabled:cursor-wait disabled:opacity-60">
                   {isDownloading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                  {isDownloading ? 'Baixando...' : 'Baixar e validar'}
+                  {isDownloading ? 'Baixando...' : manifest ? 'Verificar / reutilizar arquivo' : 'Baixar e validar'}
                 </button>
               </div>
             </article>

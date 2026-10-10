@@ -12,6 +12,10 @@ import path from 'node:path';
 import { Readable, Transform } from 'node:stream';
 import { createInterface } from 'node:readline';
 import { pipeline } from 'node:stream/promises';
+import { readCsvHeader } from './tseCsvStream.ts';
+import { DEFAULT_ZIP_LIMITS, listZipEntries, materializeZipSource, readZipMember, type TseZipEntryInfo, type TseZipLimits, type TseZipSource } from './tseZipReader.ts';
+import { validateTseLayout, type TseLayoutValidation } from './tseLayoutRegistry.ts';
+import type { TseObjectStorage } from '../storage/tseStorageAdapter.ts';
 
 const CKAN_API = 'https://dadosabertos.tse.jus.br/api/3/action';
 const DEFAULT_DOWNLOAD_DIR = path.resolve(process.cwd(), 'var/tse-downloads');
@@ -132,6 +136,38 @@ export interface TseDownloadedInspection {
   limitations: string[];
 }
 
+export interface TseZipInspectionCsv {
+  member_name: string;
+  selected: boolean;
+  reason: string | null;
+  header: string[] | null;
+  delimiter: string | null;
+  encoding: string | null;
+  detected_kind: TseResourceKind;
+  layout: TseLayoutValidation | null;
+}
+
+export interface TseZipInspection {
+  resource_id: string;
+  year: number;
+  dataset_title: string;
+  zip_file_name: string;
+  zip_sha256: string;
+  zip_size_bytes: number;
+  limits: TseZipLimits;
+  members: TseZipEntryInfo[];
+  totals: { entries: number; compressed_bytes: number; uncompressed_bytes: number };
+  csvs: TseZipInspectionCsv[];
+  validation_status: 'ZIP_MEMBERS_LISTED_LAYOUT_REVIEW_REQUIRED';
+  limitations: string[];
+}
+
+export interface TseZipInspectOptions {
+  limits?: Partial<TseZipLimits>;
+  /** Optional storage adapter (e.g. R2). Defaults to the local retained-download directory. */
+  storage?: TseObjectStorage;
+}
+
 function parseDelimitedLine(line: string, delimiter: string): string[] {
   const cells: string[] = [];
   let value = '';
@@ -174,6 +210,23 @@ function classifyResource(name: string, description: string, format: string): Ts
   if (/DETALHE DA APURACAO.*SECAO/.test(text)) return 'DETALHE_APURACAO_SECAO';
   if (/DETALHE DA APURACAO/.test(text)) return 'DETALHE_APURACAO_MUNICIPIO_ZONA';
   if (/BOLETIM DE URNA/.test(text) || normalized(format) === 'BU') return 'BOLETIM_URNA';
+  return 'OUTRO';
+}
+
+/** Infers the TSE resource kind from an internal ZIP member file name (heuristic). */
+function inferKindFromZipMemberName(name: string): TseResourceKind {
+  const text = normalized(name);
+  if (/CONSULTA_CAND|CANDIDATURA/.test(text)) return 'CANDIDATURAS';
+  if (/VOTACAO_CANDIDATO/.test(text)) return 'VOTACAO_NOMINAL_MUNICIPIO_ZONA';
+  if (/VOTACAO_PARTIDO/.test(text)) return 'VOTACAO_PARTIDO_MUNICIPIO_ZONA';
+  if (/DETALHE_VOTACAO|DETALHE_APURACAO/.test(text)) return 'DETALHE_APURACAO_MUNICIPIO_ZONA';
+  if (/BOLETIM_URNA/.test(text)) return 'BOLETIM_URNA';
+  return 'OUTRO';
+}
+
+/** Narrows a TSE resource kind to the subset accepted by validateTseLayout. */
+function layoutKindFor(kind: TseResourceKind): 'CANDIDATURAS' | 'VOTACAO_NOMINAL_MUNICIPIO_ZONA' | 'DETALHE_APURACAO_MUNICIPIO_ZONA' | 'OUTRO' {
+  if (kind === 'CANDIDATURAS' || kind === 'VOTACAO_NOMINAL_MUNICIPIO_ZONA' || kind === 'DETALHE_APURACAO_MUNICIPIO_ZONA') return kind;
   return 'OUTRO';
 }
 
@@ -551,6 +604,128 @@ export class TseOpenDataClient {
         'ZIP não é extraído automaticamente nesta etapa.'
       ]
     };
+  }
+
+  /**
+   * Inspects a retained ZIP artifact without extracting it: lists members from
+   * the central directory, then reads ONLY the header line of each internal CSV
+   * (streamed) and validates each layout against the sample-only registry.
+   * Accepts only a validated (year, resource_id) pair — never client paths.
+   */
+  async inspectStoredZip(resourceId: string, year: number, options: TseZipInspectOptions = {}): Promise<TseZipInspection> {
+    if (!/^[a-f0-9-]{16,64}$/i.test(resourceId)) throw new Error('Identificador de recurso CKAN inválido.');
+    if (!Number.isInteger(year) || year < 1994 || year > new Date().getFullYear() + 1) throw new Error('Ano eleitoral inválido.');
+    const lim: TseZipLimits = { ...DEFAULT_ZIP_LIMITS, ...(options.limits ?? {}) };
+
+    // Source resolution: R2/pluggable storage or the local retained-download dir.
+    let zipSource: TseZipSource = '';
+    let zipFileName = '';
+    let datasetTitle = '';
+    let zipSha256 = '';
+    let zipSizeBytes = 0;
+    let spool: { path: string; cleanup: () => Promise<void> } | null = null;
+    try {
+      if (options.storage) {
+      const prefix = `tse/${year}/${resourceId}/`;
+      const keys = (await options.storage.list(prefix)).filter(key => key.endsWith('.zip'));
+      if (keys.length === 0) throw new Error('Nenhum artefato ZIP disponível foi encontrado para esse recurso e ano.');
+      const objectKey = keys[keys.length - 1];
+      const metadata = await options.storage.head(objectKey);
+      if (!metadata) throw new Error('O artefato ZIP de storage não possui manifesto auditável.');
+      const fetched = await options.storage.get(objectKey);
+      if (!fetched) throw new Error('Não foi possível ler o artefato ZIP do storage.');
+      // Materialize the remote stream once: the archive is read twice (listing + member headers).
+      spool = await materializeZipSource(fetched.stream);
+      zipSource = spool.path;
+      zipFileName = path.basename(objectKey);
+      datasetTitle = metadata.dataset_title;
+      zipSha256 = metadata.sha256;
+      zipSizeBytes = metadata.size_bytes;
+    } else {
+      const stored = await this.listStoredResources(year);
+      const item = stored.find(candidate => candidate.manifest.resource_id === resourceId && candidate.artifact_status === 'AVAILABLE');
+      if (!item) throw new Error('Nenhum artefato disponível foi encontrado para esse recurso e ano.');
+      const manifest = item.manifest;
+      const zipPath = path.resolve(manifest.local_file);
+      const yearDir = path.resolve(this.downloadDir, String(year));
+      const relative = path.relative(yearDir, zipPath);
+      if (relative.startsWith('..') || path.isAbsolute(relative)) throw new Error('O manifesto aponta para um arquivo fora do diretório de downloads permitido.');
+      if (path.extname(zipPath).toLowerCase() !== '.zip') throw new Error('A inspeção de ZIP exige um container ZIP retido; o recurso baixado não é ZIP.');
+      zipSource = zipPath;
+      zipFileName = path.basename(zipPath);
+      datasetTitle = manifest.dataset_title;
+      zipSha256 = manifest.sha256;
+      zipSizeBytes = manifest.size_bytes;
+    }
+
+    const members = await listZipEntries(zipSource, lim);
+    const totals = members.reduce(
+      (acc, member) => ({
+        entries: acc.entries + 1,
+        compressed_bytes: acc.compressed_bytes + member.compressed_size,
+        uncompressed_bytes: acc.uncompressed_bytes + member.uncompressed_size
+      }),
+      { entries: 0, compressed_bytes: 0, uncompressed_bytes: 0 }
+    );
+
+    const csvs: TseZipInspectionCsv[] = [];
+    for (const member of members.filter(candidate => /\.csv$/i.test(candidate.name))) {
+      const detectedKind = inferKindFromZipMemberName(member.name);
+      try {
+        const { stream } = await readZipMember(zipSource, member.name, lim);
+        try {
+          const headerResult = await readCsvHeader(stream, 128 * 1024);
+          const selected = headerResult.header.length >= 2 &&
+            headerResult.header.some(column => /^(ANO_ELEICAO|CD_CARGO|SQ_CANDIDATO|QT_VOTOS)/.test(column.toUpperCase()));
+          csvs.push({
+            member_name: member.name,
+            selected,
+            reason: selected ? null : 'Cabeçalho sem colunas características de layout eleitoral TSE.',
+            header: headerResult.header,
+            delimiter: headerResult.delimiter,
+            encoding: headerResult.encoding,
+            detected_kind: detectedKind,
+            layout: selected ? validateTseLayout(year, layoutKindFor(detectedKind), headerResult.header) : null
+          });
+        } finally {
+          stream.destroy();
+        }
+      } catch (error) {
+        csvs.push({
+          member_name: member.name,
+          selected: false,
+          reason: `Falha ao ler o cabeçalho: ${(error as Error).message}`,
+          header: null,
+          delimiter: null,
+          encoding: null,
+          detected_kind: detectedKind,
+          layout: null
+        });
+      }
+    }
+
+    return {
+      resource_id: resourceId,
+      year,
+      dataset_title: datasetTitle,
+      zip_file_name: zipFileName,
+      zip_sha256: zipSha256,
+      zip_size_bytes: zipSizeBytes,
+      limits: lim,
+      members,
+      totals,
+      csvs,
+      validation_status: 'ZIP_MEMBERS_LISTED_LAYOUT_REVIEW_REQUIRED',
+      limitations: [
+        'A listagem lê somente o diretório central do ZIP; o conteúdo dos membros não é extraído nem ingerido.',
+        'A seleção de CSVs é heurística (extensão + cabeçalho) e exige revisão antes de qualquer ingestão analítica.',
+        'Membros como BRASIL.csv (multi-GB) são listados, mas não têm cabeçalho lido por padrão nesta etapa.',
+        'A validação de layout usa perfis de amostra do repositório; nenhum resultado autoriza ingestão automática.'
+      ]
+    };
+    } finally {
+      if (spool) await spool.cleanup();
+    }
   }
 
   private async fetchTseDownload(initialUrl: string): Promise<Response> {

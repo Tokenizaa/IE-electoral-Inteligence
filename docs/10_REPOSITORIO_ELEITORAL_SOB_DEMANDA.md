@@ -64,11 +64,11 @@ O inventário lê manifestos e metadados de tamanho; não varre o conteúdo de a
 
 ## 5. O que ainda não está implementado
 
-- Extração segura de ZIP e inspeção dos CSVs internos.
-- Parser CSV completo para campos com quebras de linha dentro de aspas.
-- Leitura seletiva de linhas de CSV/ZIP a partir de filtros de análise.
+- ~~Extração segura de ZIP e inspeção dos CSVs internos.~~ **Implementado** (seção 8): listagem de membros e leitura do cabeçalho em fluxo.
+- Parser CSV completo para campos com quebras de linha dentro de aspas (multilinha é **bloqueado** com erro claro, não suportado).
+- Leitura seletiva de linhas de CSV/ZIP a partir de filtros de análise (hoje lê-se o cabeçalho; filtro de linhas ainda pendente).
 - Staging analítico persistente e publicação versionada de agregados.
-- Armazenamento de objetos persistente para ambientes hospedados.
+- ~~Armazenamento de objetos persistente para ambientes hospedados.~~ **Abstração implementada** (seção 7); R2 real depende de provisionamento.
 - Reconciliação de totais e cobertura por ano, cargo, turno e território.
 
 Até esses itens serem implementados e validados, não declarar a ingestão histórica completa nem usar a existência de um arquivo como prova de cobertura.
@@ -87,3 +87,58 @@ Uma implementação futura de leitura sob demanda deve:
 - não publicar resultados como completos se a cobertura necessária estiver ausente.
 
 **Princípio:** adquirir uma vez, preservar a fonte, processar seletivamente e reutilizar com proveniência — sem presumir que toda fonte seja filtrável remotamente ou que todo arquivo adquirido esteja metodologicamente validado.
+
+## 7. Topologia real de deploy (Issue #2, Etapa 1 — auditado)
+
+**O runtime real deste repositório NÃO é Cloudflare Workers.** A verificação local encontrou:
+
+| Item | Estado real |
+| --- | --- |
+| Runtime | **Node.js + Express** (`server.ts`, executado via `tsx`); frontend Vite/React servido pelo mesmo processo |
+| `wrangler.toml` / `wrangler.jsonc` | **Ausente** |
+| Bindings R2 / `_worker.js` / `functions/` | **Ausentes** |
+| Deploy Cloudflare (CI) | **Ausente** — `.github/workflows/ci.yml` só roda lint + build + testes |
+| Variáveis de ambiente | `GEMINI_API_KEY`, `APP_URL` (padrão Google AI Studio / Cloud Run, ver `.env.example`) |
+| Dependências Cloudflare/S3 | **Nenhuma** |
+
+Consequência: **R2 não está provisionado nem acessível neste ambiente**. Conforme o protocolo da Issue, a implementação não simulou uma integração R2 real: criou uma **abstração testável** (`TseObjectStorage`) e documentou exatamente o que depende de provisionamento. Não houve alteração de arquitetura até esta documentação ser registrada.
+
+## 8. Adaptador de armazenamento (Issue #2, Etapa 2)
+
+`src/storage/tseStorageAdapter.ts`:
+
+- Interface mínima `TseObjectStorage`: `put/get/head/list/delete` (streams, nunca arquivo inteiro em RAM).
+- `LocalObjectStorage` — implementação real sobre `var/tse-downloads`; escrita atômica (`.part` + `rename`), falha de upload não deixa artefato parcial; manifesta sidecar por objeto.
+- `R2ObjectStorage` — delega a um `R2S3Client` injetado (interface mínima, streams Node). **SigV4 NÃO implementado aqui**; produção precisa de bucket + token (`R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`) + política GetObject/PutObject/ListObjects/DeleteObject + cliente com assinatura. Testes usam fake do cliente.
+- **Chave determinística** `tse/<ano>/<resourceId>/<sha256>.<ext>` + manifesto `...<ext>.manifest.json` — função pura `tseObjectKey()` valida ano/recurso/sha256/extensão e rejeita path traversal. Nenhum caminho vem de usuário.
+- **Hash:** calculado localmente durante o upload (`sha256` no fluxo); nunca apresentado como `VERIFIED` — a distinção `HASH_LOCAL_CALCULADO` vs verificação oficial permanece.
+- **Reuso:** antes de baixar, consulta `head()`; reutiliza o objeto somente se `resource_url`, `package_modified_at`, `resource_modified_at` e `size_bytes` conferirem. Snapshot antigo é preservado.
+
+### Setup de produção (R2) — pendente de provisionamento
+1. Criar bucket R2 (ex.: `ie-tse-artifacts`).
+2. Criar token de API S3 com permissões `Object Read & Write`.
+3. Configurar env vars `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`.
+4. Injetar um `R2S3Client` com assinatura SigV4 (fora de escopo desta etapa; os testes cobrem o contrato com fake).
+5. Apontar `inspectStoredZip({ storage })` para o adaptador R2.
+
+## 9. Inspeção segura de ZIP e leitura seletiva (Issue #2, Etapa 3)
+
+`src/ingestion/tseZipReader.ts` (usa `yauzl` — leitor ZIP streaming mantido, único provider de parse correto de central directory/ZIP64/CRC/deflate; membro nunca é buffered inteiro) e `src/ingestion/tseCsvStream.ts` (leitura byte-a-byte, latin1/ISO-8859-1, O(1) memória por linha):
+
+- **zip-slip:** nomes com `..`, absolutos, backslash ou `C:` → rejeitados (`assertSafeEntryName`).
+- **Encriptação:** entrada com `generalPurposeBitFlag` bit 0 → rejeitada.
+- **Métodos:** somente stored/deflate; demais → erro claro.
+- **Limites configuráveis** (`DEFAULT_ZIP_LIMITS`): 200 entradas, 6 GiB compactado, 25 GiB descompactado, razão de expansão 100×, 3 GiB/membro (bloqueia o membro multi-GB).
+- **Nunca extrai** para caminhos arbitrários: expõe apenas streams de membro. Fontes stream (remoto) são spooladas em arquivo temporário anônimo, removido após o uso.
+- `inspectStoredZip(resourceId, year)` (local ou storage injetado): lista membros, seleciona CSVs por extensão + cabeçalho, valida layout contra o registry (amostras, sem autorizar ingestão). Endpoint: `POST /api/tse/inspect-zip`.
+- **Leitura seletiva real:** ZIP não permite range query por membro sem percorrer o central directory; a leitura lista o diretório central e abre **em fluxo apenas o membro escolhido** — nada é prometido além disso.
+
+## 10. Respostas do relatório da Issue #2
+
+1. **Onde ficam os arquivos brutos em produção?** Hoje em `var/tse-downloads` (filesystem do processo — **efêmero em deploys**). Em R2, após provisionamento, na chave `tse/<ano>/<resourceId>/<sha256>.<ext>` (alta durabilidade). Supabase **não** recebe arquivos brutos.
+2. **Como o Worker acessa os objetos?** Não há Worker nesta stack. O Node/Express usa `LocalObjectStorage` (default) ou `R2ObjectStorage` via `R2S3Client` injetado.
+3. **Como a leitura seletiva evita carregar tudo em RAM?** ZIP: stream do membro exato; CSV: byte-a-byte por linha com limite. Upload/download: stream direto. Nada de `buffer integral`.
+4. **Quais operações percorrem o arquivo inteiro?** SHA-256 do upload (necessário para o hash local); leitura de cabeçalho percorre só a primeira linha; listagem lê só o central directory. Análises que exijam todo o membro (contagem total, agregação) percorrerão o fluxo inteiro — ainda não implementadas.
+5. **Limites e custos:** R2 cobra operações/armazenamento; limites de segurança em `DEFAULT_ZIP_LIMITS`; arquivos multi-GB (ex.: BRASIL.csv) são listados mas **não** têm conteúdo lido nesta etapa. Capacidade Node de processar membro de 4,3 GiB descompactado é viável em fluxo, mas custo/time fica pendente de política.
+6. **O que foi realmente testado contra R2/Cloudflare vs mock:** **Nada real.** Não há credenciais/bucket neste ambiente. Testes usam `FakeR2Client` para `R2ObjectStorage` e `LocalObjectStorage` real em diretório temporário. Validação contra R2 real permanece pendente até provisionamento.
+7. **O que falta antes de autorizar ingestão analítica:** provisionar R2 e validar contra o serviço real; parser CSV multilinha (RFC-4180) se surgir dataset com quebras; leitura seletiva de linhas por filtro de análise; reconciliação de totais/cobertura por ano, cargo, turno, território; revisão metodológica independente dos perfis de layout.

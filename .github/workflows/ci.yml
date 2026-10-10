@@ -35,3 +35,9 @@ jobs:
 
       - name: TSE versioned layout validation safeguards
         run: bun run test:tse-layout
+
+      - name: TSE object storage adapter safeguards
+        run: bun run test:tse-storage
+
+      - name: TSE secure ZIP reader safeguards
+        run: bun run test:tse-zip

@@ -109,6 +109,23 @@ async function startServer() {
     }
   });
 
+  // Inspect a retained ZIP artifact: list members from the central directory and
+  // read only the header of each internal CSV (never extracts member data).
+  app.post('/api/tse/inspect-zip', async (req, res) => {
+    const resourceId = String(req.body?.resource_id ?? '');
+    const year = Number.parseInt(String(req.body?.year ?? ''), 10);
+    if (!resourceId || !Number.isInteger(year)) {
+      return res.status(400).json({ error: 'Informe resource_id e year do catálogo do TSE.' });
+    }
+    try {
+      res.json(await tseOpenData.inspectStoredZip(resourceId, year));
+    } catch (err: any) {
+      const message = String(err?.message ?? 'Falha ao inspecionar o ZIP do TSE.');
+      const status = /inválido|não foi encontrado|exige ZIP|fora do diretório/i.test(message) ? 400 : 422;
+      res.status(status).json({ error: message });
+    }
+  });
+
   // Validate the inspected header against versioned, sample-only layout profiles.
   // A positive structural match never authorizes ingestion into the analytical model.
   app.post('/api/tse/validate-layout', async (req, res) => {

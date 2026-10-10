@@ -1,37 +1,41 @@
 /**
- * Minimal, streaming CSV line reader for TSE tabular members.
+ * Streaming CSV record reader for TSE tabular members (RFC-4180).
  *
- * Cells are preserved byte-for-byte (no trim); header names are normalized
- * separately via `normalizeHeaderName` for column comparison only.
+ * Uses `csv-parse` in streaming mode to produce complete CSV records (not
+ * physical lines). Quoted fields may contain line breaks; escaped quotes `""`
+ * become `"` and surrounding quotes are removed by the parser. Data values are
+ * preserved as-is (no `.trim()`).
  *
- * Design decision: quoted fields that contain a line break are BLOCKED with a
- * clear error instead of being assembled across records. Official TSE delimited
- * files (candidaturas, votação, apuração) do not embed newlines inside quoted
- * cells; rejecting them keeps this parser streaming with O(1) memory and avoids
- * a stateful RFC-4180 record builder. If a future dataset needs multiline
- * quoted fields, replace `readCsvLines` with a full RFC-4180 parser.
+ * Layers: file bytes → decoded text (latin1/iso-8859-1) → logical CSV values
+ * (RFC-4180 unescape). Hashes of source bytes remain authoritative; values are
+ * not "byte-a-byte" after decoding.
  *
- * Multiline detection is a quote-parity rule: every `"` byte toggles the
- * in-quote state (`""` contributes two toggles and nets zero), so a line
- * carrying an odd number of quotes is still inside a quoted field; a `\n` in
- * that state proves a field spans records and is rejected.
+ * Design: `readCsvLines(readable, options)` yields `string[]` per CSV record
+ * to keep the signature compatible with existing callers (`tseSelectiveReader`).
+ * Header reading uses the same record stream. Safety limits: `maxRecordBytes`,
+ * `maxFieldBytes`, `maxColumns` abort with structured errors.
  */
 import type { Readable } from 'node:stream';
+import { parse } from 'csv-parse';
 
 export const MULTILINE_FIELD_ERROR = 'Erro: campo multilinha não suportado pelo parser';
+export const CSV_PARSER_VERSION_FALLBACK = 'tse-csv-stream/3-rfc4180';
+
+export const CSV_PARSER_VERSION = CSV_PARSER_VERSION_FALLBACK;
 
 /**
  * Normalizes a header cell for name comparison only (never applied to data
- * values): strips a leading BOM, trims the outer whitespace and uppercases.
+ * values): strips a leading BOM, trims outer whitespace and uppercases.
  */
 export function normalizeHeaderName(cell: string): string {
   return cell.replace(/^\uFEFF/, '').trim().toUpperCase();
 }
 
 /**
- * Parses one CSV physical line preserving every cell byte-for-byte. Only the
- * RFC-4180 quote unescaping (`""` → `"`) is applied; surrounding quotes are
- * removed and NO trim happens — spaces inside a cell are official data.
+ * Parses one CSV physical line preserving every cell byte-for-byte. Kept for
+ * compatibility/testing; prefer `readCsvLines` for full RFC-4180 semantics.
+ * Only RFC-4180 quote unescaping (`""` → `"`) is applied; surrounding quotes
+ * are removed; NO trim happens.
  */
 export function parseCsvRecord(line: string, delimiter: string): string[] {
   const cells: string[] = [];
@@ -60,85 +64,133 @@ export function parseCsvRecord(line: string, delimiter: string): string[] {
 export interface CsvLineReaderOptions {
   delimiter?: string;
   maxLineBytes?: number;
+  maxRecordBytes?: number;
+  maxFieldBytes?: number;
+  maxColumns?: number;
+  encoding?: 'latin1' | 'utf8' | 'iso-8859-1';
+}
+
+export class CsvParserError extends Error {
+  readonly code: string;
+  readonly details: Record<string, unknown>;
+  constructor(code: string, message: string, details: Record<string, unknown> = {}) {
+    super(message);
+    this.name = 'CsvParserError';
+    this.code = code;
+    this.details = details;
+  }
 }
 
 /**
- * Streaming CSV line reader. Iterates the byte stream directly, splits on
- * `\n` (CR and CRLF accepted), maps bytes 1:1 to latin1 (the official TSE
- * ISO-8859-1 encoding) and rejects fields that carry a line break with a clear
- * error ({@link MULTILINE_FIELD_ERROR}). Memory stays O(lineBytes).
- *
- * The consumer must destroy `readable` when aborting early; otherwise the
- * generator keeps reading the underlying member stream to completion.
+ * Streaming CSV record reader (RFC-4180). Yields complete records as string[].
+ * Values are decoded from latin1 (TSE ISO-8859-1) then parsed; no trim applied.
  */
-export async function* readCsvLines(readable: Readable, options: CsvLineReaderOptions = {}): AsyncGenerator<string[], void, unknown> {
+export async function* readCsvLines(
+  readable: Readable,
+  options: CsvLineReaderOptions = {}
+): AsyncGenerator<string[], void, unknown> {
   const delimiter = options.delimiter ?? ';';
-  const maxLineBytes = options.maxLineBytes ?? 16 * 1024 * 1024;
-  let line = '';
-  let quoteParity = 0; // odd => currently inside a quoted field
-  for await (const chunk of readable) {
-    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-    for (let i = 0; i < buffer.length; i++) {
-      const byte = buffer[i];
-      if (byte === 0x22) quoteParity ^= 1;
-      if (byte === 0x0a) {
-        if (quoteParity === 1) throw new Error(MULTILINE_FIELD_ERROR);
-        yield parseCsvRecord(line.endsWith('\r') ? line.slice(0, -1) : line, delimiter);
-        line = '';
-        quoteParity = 0;
-      } else {
-        line += String.fromCharCode(byte);
-        if (line.length > maxLineBytes) throw new Error(`Linha CSV excede o limite de ${maxLineBytes} bytes.`);
+  const maxRecordBytes = options.maxRecordBytes ?? 128 * 1024 * 1024;
+  const maxFieldBytes = options.maxFieldBytes ?? 32 * 1024 * 1024;
+  const maxColumns = options.maxColumns ?? 2048;
+  const encoding = options.encoding ?? 'latin1';
+
+  const parser = readable
+    .setEncoding(encoding as BufferEncoding)
+    .pipe(
+      parse({
+        delimiter,
+        skip_empty_lines: false,
+        relax_quotes: true,
+        trim: false,
+        escape: '"',
+        quote: '"',
+        record_delimiter: ['\r\n', '\n', '\r']
+      })
+    );
+
+  let recordBytes = 0;
+  for await (const record of parser as AsyncIterable<string[]>) {
+    // Estimate bytes conservatively by joining with delimiter
+    const joined = record.join(delimiter);
+    recordBytes = Buffer.byteLength(joined, encoding === 'latin1' ? 'latin1' : 'utf8');
+    if (recordBytes > maxRecordBytes) {
+      const err = new CsvParserError('RECORD_TOO_LARGE', `Registro CSV excede o limite de ${maxRecordBytes} bytes.`, {
+        max_record_bytes: maxRecordBytes,
+        approx_bytes: recordBytes
+      });
+      parser.destroy(err);
+      throw err;
+    }
+    for (const field of record) {
+      const fb = Buffer.byteLength(field, encoding === 'latin1' ? 'latin1' : 'utf8');
+      if (fb > maxFieldBytes) {
+        const err = new CsvParserError('FIELD_TOO_LARGE', `Campo CSV excede o limite de ${maxFieldBytes} bytes.`, {
+          max_field_bytes: maxFieldBytes,
+          approx_bytes: fb
+        });
+        parser.destroy(err);
+        throw err;
       }
     }
-  }
-  if (quoteParity === 1) throw new Error(MULTILINE_FIELD_ERROR);
-  if (line) yield parseCsvRecord(line.endsWith('\r') ? line.slice(0, -1) : line, delimiter);
-}
-
-/**
- * Pulls the next data chunk in paused mode (no 'data' listeners left behind,
- * no flowing state). Resolves null at EOF. Used so the first-line reader can
- * return the rest of the stream intact for continued reads.
- */
-function pullChunk(readable: Readable): Promise<Buffer | null> {
-  return new Promise((resolve, reject) => {
-    const onData = (chunk: unknown): void => {
-      cleanup();
-      resolve(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as Uint8Array));
-    };
-    const onEnd = (): void => {
-      cleanup();
-      resolve(null);
-    };
-    const onError = (error: Error): void => {
-      cleanup();
-      reject(error);
-    };
-    function cleanup(): void {
-      readable.removeListener('data', onData);
-      readable.removeListener('end', onEnd);
-      readable.removeListener('error', onError);
-      readable.pause();
+    if (record.length > maxColumns) {
+      const err = new CsvParserError('TOO_MANY_COLUMNS', `Registro com mais colunas que o limite (${record.length} > ${maxColumns}).`, {
+        column_count: record.length,
+        max_columns: maxColumns
+      });
+      parser.destroy(err);
+      throw err;
     }
-    readable.on('data', onData);
-    readable.on('end', onEnd);
-    readable.on('error', onError);
-    readable.resume();
-  });
+    yield record;
+  }
 }
 
 /**
- * Reads only the first physical line of a byte stream (header), never
- * buffering the rest. The remainder of the source chunk is put back into the
- * stream via `unshift`, so the caller can keep reading records afterwards.
- * The stream is NOT destroyed — the consumer owns its lifecycle.
+ * Reads only the first physical line of a byte stream (header). The remainder
+ * of the source chunk is put back into the stream via `unshift` so the caller
+ * can keep reading records afterwards.
+ * Works with both true streams (yauzl) and buffered streams (Readable.from).
  */
 export async function readFirstLineBytes(readable: Readable, maxBytes = 128 * 1024): Promise<Buffer> {
   const parts: Buffer[] = [];
   let total = 0;
+  
+  // Use readable.read() to pull from internal buffer without consuming 'end'
+  async function readChunk(): Promise<Buffer | null> {
+    // First try to read from buffer synchronously
+    const chunk = readable.read();
+    if (chunk !== null) {
+      return Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as Uint8Array);
+    }
+    // Buffer empty, wait for 'readable' event
+    return new Promise((resolve, reject) => {
+      const onReadable = (): void => {
+        readable.removeListener('readable', onReadable);
+        readable.removeListener('error', onError);
+        readable.removeListener('end', onEnd);
+        const chunk = readable.read();
+        resolve(chunk ? (Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as Uint8Array)) : null);
+      };
+      const onEnd = (): void => {
+        readable.removeListener('readable', onReadable);
+        readable.removeListener('error', onError);
+        readable.removeListener('end', onEnd);
+        resolve(null);
+      };
+      const onError = (error: Error): void => {
+        readable.removeListener('readable', onReadable);
+        readable.removeListener('error', onError);
+        readable.removeListener('end', onEnd);
+        reject(error);
+      };
+      readable.on('readable', onReadable);
+      readable.on('end', onEnd);
+      readable.on('error', onError);
+    });
+  }
+  
   for (;;) {
-    const chunk = await pullChunk(readable);
+    const chunk = await readChunk();
     if (chunk === null) break;
     const newline = chunk.indexOf(0x0a);
     if (newline >= 0) {

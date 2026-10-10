@@ -19,12 +19,12 @@
  *   that wants "error on too many rows" can assert `truncated` itself).
  */
 import type { Readable } from 'node:stream';
-import { normalizeHeaderName, readCsvHeader, readCsvLines } from './tseCsvStream.ts';
+import { normalizeHeaderName, readCsvHeader, readCsvLines, CSV_PARSER_VERSION } from './tseCsvStream.ts';
+
+/** Re-exported parser version for downstream consumers and tests. */
+export { CSV_PARSER_VERSION };
 import { readZipMember, type TseZipEntryInfo, type TseZipLimits, type TseZipSource } from './tseZipReader.ts';
 import { assertSafeEntryName } from './tseZipReader.ts';
-
-/** Bumped when parser semantics change (Etapa B: literal, no cell trim). */
-export const CSV_PARSER_VERSION = 'tse-csv-stream/2-literal';
 
 /**
  * Column allowlist for `VOTACAO_NOMINAL_MUNICIPIO_ZONA` members (votação

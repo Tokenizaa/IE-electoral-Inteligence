@@ -134,11 +134,11 @@ async function run() {
     });
     assert.deepEqual(streamedBytes, VOTACAO_CSV);
 
-    // 8) CSV multilinha: bloqueado com erro claro; leitura em fluxo funciona.
+    // 8) CSV multilinha: agora suportado (RFC-4180); valor com \n dentro de aspas é preservado.
     const multiline = Buffer.from('a;"linha1\nlinha2";c\n', 'latin1');
-    await assert.rejects(async () => {
-      for await (const _ of readCsvLines(Readable.from(multiline))) { /* consume */ }
-    }, new RegExp(MULTILINE_FIELD_ERROR.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    const mlRows: string[][] = [];
+    for await (const row of readCsvLines(Readable.from(multiline))) mlRows.push(row);
+    assert.deepEqual(mlRows, [['a', 'linha1\nlinha2', 'c']], 'campo multilinha parseado corretamente');
 
     const rows: string[][] = [];
     for await (const row of readCsvLines(Readable.from(Buffer.from('a;b;c\r\n1;2;3\r\n4;5;6\n', 'latin1')))) rows.push(row);

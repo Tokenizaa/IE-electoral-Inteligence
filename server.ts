@@ -8,6 +8,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { DataService } from './src/services/dataService.ts';
 import { TseOpenDataClient, type TseResourceKind } from './src/ingestion/tseOpenData.ts';
+import type { TseReconciliationReport } from './src/ingestion/tseReconciliation.ts';
 import { validateTseLayout } from './src/ingestion/tseLayoutRegistry.ts';
 import { TseSelectError } from './src/ingestion/tseSelectiveReader.ts';
 
@@ -215,6 +216,201 @@ async function startServer() {
         return res.status(status).json({ error: { code: err.code, message: err.message, details: err.details } });
       }
       const message = String(err?.message ?? 'Falha na leitura seletiva do ZIP TSE.');
+      const status = /inválido|não foi encontrado|não possui|exige ZIP|fora do diretório/i.test(message) ? 400 : 422;
+      res.status(status).json({ error: message });
+    }
+  });
+
+  // Full scan + methodological reconciliation of one CSV member inside a retained ZIP.
+  // Reads ALL records (no maxRows unless explicitly passed), builds dimension aggregates,
+  // detects duplicates, layout divergences, and reconciles against optional expected counts.
+  // Returns a structured TseReconciliationReport.
+  app.post('/api/tse/reconcile', async (req, res) => {
+    const resourceId = String(req.body?.resource_id ?? '');
+    const year = Number.parseInt(String(req.body?.year ?? ''), 10);
+    const memberName = typeof req.body?.member_name === 'string' ? req.body.member_name.trim() : '';
+    const maxRows = req.body?.max_rows === undefined ? undefined : Number(req.body?.max_rows);
+    const expected = req.body?.expected ?? null;
+    const filters = Array.isArray(req.body?.filters) ? req.body.filters : undefined;
+
+    if (!resourceId || !Number.isInteger(year)) {
+      return res.status(400).json({ error: 'Informe resource_id e year do catálogo do TSE.' });
+    }
+    if (!memberName) {
+      return res.status(400).json({ error: 'member_name é obrigatório (nome interno do membro CSV no ZIP).' });
+    }
+    if (!/^[a-f0-9-]{16,64}$/i.test(resourceId)) {
+      return res.status(400).json({ error: 'resource_id malformado.' });
+    }
+    if (maxRows !== undefined && (!Number.isInteger(maxRows) || maxRows < 1)) {
+      return res.status(400).json({ error: 'max_rows deve ser inteiro positivo.' });
+    }
+
+    try {
+      const report: TseReconciliationReport = await tseOpenData.scanStoredZipMember(resourceId, year, memberName, {
+        maxRows,
+        expected,
+        filters
+      });
+      res.json(report);
+    } catch (err: any) {
+      const message = String(err?.message ?? 'Falha na reconciliação do ZIP TSE.');
+      const status = /inválido|não foi encontrado|não possui|exige ZIP|fora do diretório/i.test(message) ? 400 : 422;
+      res.status(status).json({ error: message });
+    }
+  });
+
+  // Full scan + methodological reconciliation of one CSV member inside a retained ZIP.
+  // Reads ALL records (no maxRows unless explicitly passed), builds dimension aggregates,
+  // detects duplicates, layout divergences, and reconciles against optional expected counts.
+  // Returns a structured TseReconciliationReport.
+  app.post('/api/tse/reconcile', async (req, res) => {
+    const resourceId = String(req.body?.resource_id ?? '');
+    const year = Number.parseInt(String(req.body?.year ?? ''), 10);
+    const memberName = typeof req.body?.member_name === 'string' ? req.body.member_name.trim() : '';
+    const maxRows = req.body?.max_rows === undefined ? undefined : Number(req.body?.max_rows);
+    const expected = req.body?.expected ?? null;
+    const filters = Array.isArray(req.body?.filters) ? req.body.filters : undefined;
+
+    if (!resourceId || !Number.isInteger(year)) {
+      return res.status(400).json({ error: 'Informe resource_id e year do catálogo do TSE.' });
+    }
+    if (!memberName) {
+      return res.status(400).json({ error: 'member_name é obrigatório (nome interno do membro CSV no ZIP).' });
+    }
+    if (!/^[a-f0-9-]{16,64}$/i.test(resourceId)) {
+      return res.status(400).json({ error: 'resource_id malformado.' });
+    }
+    if (maxRows !== undefined && (!Number.isInteger(maxRows) || maxRows < 1)) {
+      return res.status(400).json({ error: 'max_rows deve ser inteiro positivo.' });
+    }
+
+    try {
+      const report: TseReconciliationReport = await tseOpenData.scanStoredZipMember(resourceId, year, memberName, {
+        maxRows,
+        expected,
+        filters
+      });
+      res.json(report);
+    } catch (err: any) {
+      const message = String(err?.message ?? 'Falha na reconciliação do ZIP TSE.');
+      const status = /inválido|não foi encontrado|não possui|exige ZIP|fora do diretório/i.test(message) ? 400 : 422;
+      res.status(status).json({ error: message });
+    }
+  });
+
+  // Full scan + methodological reconciliation of one CSV member inside a retained ZIP.
+  // Reads ALL records (no maxRows unless explicitly passed), builds dimension aggregates,
+  // detects duplicates, layout divergences, and reconciles against optional expected counts.
+  // Returns a structured TseReconciliationReport.
+  app.post('/api/tse/reconcile', async (req, res) => {
+    const resourceId = String(req.body?.resource_id ?? '');
+    const year = Number.parseInt(String(req.body?.year ?? ''), 10);
+    const memberName = typeof req.body?.member_name === 'string' ? req.body.member_name.trim() : '';
+    const maxRows = req.body?.max_rows === undefined ? undefined : Number(req.body?.max_rows);
+    const expected = req.body?.expected ?? null;
+    const filters = Array.isArray(req.body?.filters) ? req.body.filters : undefined;
+
+    if (!resourceId || !Number.isInteger(year)) {
+      return res.status(400).json({ error: 'Informe resource_id e year do catálogo do TSE.' });
+    }
+    if (!memberName) {
+      return res.status(400).json({ error: 'member_name é obrigatório (nome interno do membro CSV no ZIP).' });
+    }
+    if (!/^[a-f0-9-]{16,64}$/i.test(resourceId)) {
+      return res.status(400).json({ error: 'resource_id malformado.' });
+    }
+    if (maxRows !== undefined && (!Number.isInteger(maxRows) || maxRows < 1)) {
+      return res.status(400).json({ error: 'max_rows deve ser inteiro positivo.' });
+    }
+
+    try {
+      const report: TseReconciliationReport = await tseOpenData.scanStoredZipMember(resourceId, year, memberName, {
+        maxRows,
+        expected,
+        filters
+      });
+      res.json(report);
+    } catch (err: any) {
+      const message = String(err?.message ?? 'Falha na reconciliação do ZIP TSE.');
+      const status = /inválido|não foi encontrado|não possui|exige ZIP|fora do diretório/i.test(message) ? 400 : 422;
+      res.status(status).json({ error: message });
+    }
+  });
+
+  // Full scan + methodological reconciliation of one CSV member inside a retained ZIP.
+  // Reads ALL records (no maxRows unless explicitly passed), builds dimension aggregates,
+  // detects duplicates, layout divergences, and reconciles against optional expected counts.
+  // Returns a structured TseReconciliationReport.
+  app.post('/api/tse/reconcile', async (req, res) => {
+    const resourceId = String(req.body?.resource_id ?? '');
+    const year = Number.parseInt(String(req.body?.year ?? ''), 10);
+    const memberName = typeof req.body?.member_name === 'string' ? req.body.member_name.trim() : '';
+    const maxRows = req.body?.max_rows === undefined ? undefined : Number(req.body?.max_rows);
+    const expected = req.body?.expected ?? null;
+    const filters = Array.isArray(req.body?.filters) ? req.body.filters : undefined;
+
+    if (!resourceId || !Number.isInteger(year)) {
+      return res.status(400).json({ error: 'Informe resource_id e year do catálogo do TSE.' });
+    }
+    if (!memberName) {
+      return res.status(400).json({ error: 'member_name é obrigatório (nome interno do membro CSV no ZIP).' });
+    }
+    if (!/^[a-f0-9-]{16,64}$/i.test(resourceId)) {
+      return res.status(400).json({ error: 'resource_id malformado.' });
+    }
+    if (maxRows !== undefined && (!Number.isInteger(maxRows) || maxRows < 1)) {
+      return res.status(400).json({ error: 'max_rows deve ser inteiro positivo.' });
+    }
+
+    try {
+      const report: TseReconciliationReport = await tseOpenData.scanStoredZipMember(resourceId, year, memberName, {
+        maxRows,
+        expected,
+        filters
+      });
+      res.json(report);
+    } catch (err: any) {
+      const message = String(err?.message ?? 'Falha na reconciliação do ZIP TSE.');
+      const status = /inválido|não foi encontrado|não possui|exige ZIP|fora do diretório/i.test(message) ? 400 : 422;
+      res.status(status).json({ error: message });
+    }
+  });
+
+  // Full scan + methodological reconciliation of one CSV member inside a retained ZIP.
+  // Reads ALL records (no maxRows unless explicitly passed), builds dimension aggregates,
+  // detects duplicates, layout divergences, and reconciles against optional expected counts.
+  // Returns a structured TseReconciliationReport.
+  app.post('/api/tse/reconcile', async (req, res) => {
+    const resourceId = String(req.body?.resource_id ?? '');
+    const year = Number.parseInt(String(req.body?.year ?? ''), 10);
+    const memberName = typeof req.body?.member_name === 'string' ? req.body.member_name.trim() : '';
+    const maxRows = req.body?.max_rows === undefined ? undefined : Number(req.body?.max_rows);
+    const expected = req.body?.expected ?? null;
+    const filters = Array.isArray(req.body?.filters) ? req.body.filters : undefined;
+
+    if (!resourceId || !Number.isInteger(year)) {
+      return res.status(400).json({ error: 'Informe resource_id e year do catálogo do TSE.' });
+    }
+    if (!memberName) {
+      return res.status(400).json({ error: 'member_name é obrigatório (nome interno do membro CSV no ZIP).' });
+    }
+    if (!/^[a-f0-9-]{16,64}$/i.test(resourceId)) {
+      return res.status(400).json({ error: 'resource_id malformado.' });
+    }
+    if (maxRows !== undefined && (!Number.isInteger(maxRows) || maxRows < 1)) {
+      return res.status(400).json({ error: 'max_rows deve ser inteiro positivo.' });
+    }
+
+    try {
+      const report: TseReconciliationReport = await tseOpenData.scanStoredZipMember(resourceId, year, memberName, {
+        maxRows,
+        expected,
+        filters
+      });
+      res.json(report);
+    } catch (err: any) {
+      const message = String(err?.message ?? 'Falha na reconciliação do ZIP TSE.');
       const status = /inválido|não foi encontrado|não possui|exige ZIP|fora do diretório/i.test(message) ? 400 : 422;
       res.status(status).json({ error: message });
     }

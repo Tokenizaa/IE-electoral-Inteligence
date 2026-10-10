@@ -15,13 +15,15 @@
     "test:tse-layout": "tsx tests/tse_layout_registry.test.ts",
     "test:tse-storage": "tsx tests/tse_storage_adapter.test.ts",
     "test:tse-zip": "tsx tests/tse_zip_reader.test.ts",
-    "test:tse-select": "tsx tests/tse_selective_reader.test.ts"
+    "test:tse-select": "tsx tests/tse_selective_reader.test.ts",
+    "test:tse-reconciliation": "tsx tests/tse_reconciliation.test.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8",
     "@google/genai": "^2.4.0",
     "@tailwindcss/vite": "^4.3.3",
     "@vitejs/plugin-react": "^6.1.1",
+    "csv-parse": "^7.0.3",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
     "lucide-react": "^0.546.0",

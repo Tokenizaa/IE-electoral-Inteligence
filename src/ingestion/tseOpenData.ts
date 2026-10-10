@@ -12,7 +12,17 @@ import path from 'node:path';
 import { Readable, Transform } from 'node:stream';
 import { createInterface } from 'node:readline';
 import { pipeline } from 'node:stream/promises';
-import { readCsvHeader } from './tseCsvStream.ts';
+import { readCsvHeader, readCsvLines } from './tseCsvStream.ts';
+import {
+  type TseReconciliationReport,
+  type TseReconciliationSummary,
+  buildDimensionCounts,
+  detectDivergences,
+  detectDuplicates,
+  detectGaps,
+  reconcileAgainstExpected,
+  determineScanStatus
+} from './tseReconciliation.ts';
 import { DEFAULT_ZIP_LIMITS, listZipEntries, materializeZipSource, readZipMember, type TseZipEntryInfo, type TseZipLimits, type TseZipSource } from './tseZipReader.ts';
 import { selectZipCsvRows, type TseSelectOptions, type TseSelectSummary } from './tseSelectiveReader.ts';
 import { validateTseLayout, type TseLayoutValidation } from './tseLayoutRegistry.ts';
@@ -862,4 +872,135 @@ export class TseOpenDataClient {
     }
     return { signatureValid, csvHeader, notes };
   }
+  /**
+   * Full scan + methodological reconciliation of one CSV member inside a retained ZIP.
+   * Reads ALL records (no maxRows unless explicitly passed), builds dimension aggregates,
+   * detects duplicates, layout divergences, and reconciles against optional expected counts.
+   * Returns a structured TseReconciliationReport.
+   */
+  async scanStoredZipMember(
+    resourceId: string,
+    year: number,
+    memberName: string,
+    options: {
+      storage?: TseObjectStorage;
+      maxRows?: number;
+      expected?: { source_ref: string; method: string; per_dimension?: Record<string, { UF?: string; ANO?: string; CARGO?: string; TURNO?: string; expected_count: number; source_ref: string; method: string }> };
+      filters?: Array<{ column: string; values: string[] }>;
+    } = {}
+  ): Promise<TseReconciliationReport> {
+    if (!/^[a-f0-9-]{16,64}$/i.test(resourceId)) throw new Error('Identificador de recurso CKAN inválido.');
+    if (!Number.isInteger(year) || year < 1994 || year > new Date().getFullYear() + 1) throw new Error('Ano eleitoral inválido.');
+
+    const resolved = await this.resolveStoredZipSource(resourceId, year, options.storage);
+    const spool = resolved.spool;
+    let fullyConsumed = false;
+    let maxRowsReached = false;
+    let cancelled = false;
+    let error = false;
+    let sizeLimitReached = false;
+
+    try {
+      // Separate ZIP limits from scan options
+      const zipLimits: Partial<TseZipLimits> = {};
+      if (options.maxRows !== undefined) (zipLimits as any).maxRows = options.maxRows; // not used but kept for compatibility
+      const memberStream = await readZipMember(resolved.zipSource, memberName, zipLimits);
+      const headerResult = await readCsvHeader(memberStream.stream, 128 * 1024);
+      const normalizedHeader = headerResult.header;
+      const delimiter = headerResult.delimiter;
+
+      if (normalizedHeader.length === 0 || (normalizedHeader.length === 1 && normalizedHeader[0] === '')) {
+        throw new Error(`O membro ${memberName} não possui cabeçalho CSV legível.`);
+      }
+
+      const layoutValidation = validateTseLayout(year, 'VOTACAO_NOMINAL_MUNICIPIO_ZONA', normalizedHeader);
+      const layoutDivergences = detectDivergences(normalizedHeader, layoutValidation);
+
+      const records: string[][] = [];
+      let recordsRead = 0;
+      let recordsAccepted = 0;
+      let recordsRejected = 0;
+      let recordsInvalid = 0;
+      let recordsTruncated = 0;
+
+      try {
+        for await (const row of readCsvLines(memberStream.stream, { delimiter })) {
+          recordsRead++;
+          if (options.maxRows && recordsAccepted >= options.maxRows) {
+            recordsTruncated = recordsRead - recordsAccepted;
+            maxRowsReached = true;
+            break;
+          }
+          records.push(row);
+          recordsAccepted++;
+        }
+        fullyConsumed = !maxRowsReached;
+      } catch (err) {
+        error = true;
+        fullyConsumed = false;
+        throw err;
+      }
+
+      const dimensions = buildDimensionCounts(records, normalizedHeader);
+
+      const dupKeyCols = ['CD_MUNICIPIO', 'NR_ZONA', 'CD_CARGO', 'SQ_CANDIDATO'];
+      const duplicates = detectDuplicates(records, normalizedHeader, dupKeyCols);
+
+      const expected = options.expected ?? null;
+      const coverage = reconcileAgainstExpected(dimensions, expected);
+
+      const expectedArray: Array<{ UF?: string; ANO?: string; CARGO?: string; TURNO?: string; expected_count: number; source_ref: string; method: string }> = [];
+      if (expected?.per_dimension) {
+        for (const [, exp] of Object.entries(expected.per_dimension)) {
+          expectedArray.push(exp);
+        }
+      }
+      const gaps = detectGaps(dimensions, expectedArray);
+
+      const scanStatus = determineScanStatus({ fullyConsumed, maxRowsReached, cancelled, error, sizeLimitReached });
+
+      const { CSV_PARSER_VERSION } = await import('./tseCsvStream.ts');
+      const summary: TseReconciliationSummary = {
+        source: {
+          resource_id: resourceId,
+          year,
+          resource_url: resolved.resourceUrl,
+          zip_sha256: resolved.zipSha256,
+          member: memberName,
+          member_uncompressed_size: memberStream.entry.uncompressed_size
+        },
+        parser_version: CSV_PARSER_VERSION,
+        delimiter,
+        encoding: 'iso-8859-1',
+        num_columns: normalizedHeader.length,
+        header_normalized: normalizedHeader,
+        counters: {
+          records_read: recordsRead,
+          records_accepted: recordsAccepted,
+          records_rejected: recordsRejected,
+          records_invalid: recordsInvalid,
+          records_truncated: recordsTruncated
+        },
+        scan_status: scanStatus,
+        filters: options.filters,
+        dimensions: {
+          UF: dimensions.UF,
+          ANO: dimensions.ANO,
+          CARGO: dimensions.CARGO,
+          TURNO: dimensions.TURNO
+        }
+      };
+
+      return {
+        summary,
+        expected: expected ? { source_ref: expected.source_ref, method: expected.method, per_dimension: expected.per_dimension } : { source_ref: '', method: 'NONE', per_dimension: {} },
+        gaps,
+        duplicates,
+        coverage
+      };
+    } finally {
+      if (spool) await spool.cleanup();
+    }
+  }
+
 }

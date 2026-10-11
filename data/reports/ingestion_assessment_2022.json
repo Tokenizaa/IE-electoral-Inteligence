@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-10-11T04:05:10.817Z",
+  "generated_at": "2026-10-11T04:34:56.503Z",
   "year": 2022,
   "scan_mode": "bounded:2000",
   "member_filter": null,
   "policy": {
     "note": "Ingestão analítica BLOQUEADA até reconciliação com denominadores oficiais do TSE e evidência suficiente.",
-    "authorization_rule": "AUTHORIZED somente quando TODOS os membros passam: traceabilidade, layout oficialmente validado, scan COMPLETE, dedup completa, invariante de contadores e reconciliação de cobertura com tolerância zero."
+    "authorization_rule": "AUTHORIZED somente quando TODOS os membros passam: traceabilidade, layout oficialmente validado, scan COMPLETE, dedup completa, invariante de contadores e reconciliação de cobertura com tolerância zero; E o escopo oficial está integralmente validado com inventário exato."
   },
   "summary": {
     "artifacts": 1,
@@ -29,6 +29,31 @@
       "NO_OFFICIAL_DENOMINATOR",
       "RECONCILIATION_NOT_ZERO_TOLERANCE"
     ]
+  },
+  "scope": {
+    "contract_version": "1.0.0-2022",
+    "declared": true,
+    "validation_violations": [],
+    "gate": {
+      "authorized": false,
+      "blockers": [
+        "REQUIREMENTS_NOT_VALIDATED",
+        "SOURCES_NOT_VALIDATED",
+        "REFERENCE_MISMATCH"
+      ],
+      "reasons": [
+        "Há requisitos não VALIDATED.",
+        "Há fontes oficiais não validadas.",
+        "8 referência(s) divergente(s)/ausente(s)."
+      ],
+      "inventory": {
+        "expected": 29,
+        "observed": 29,
+        "missing_members": [],
+        "extra_members": [],
+        "complete": true
+      }
+    }
   },
   "artifacts": [
     {

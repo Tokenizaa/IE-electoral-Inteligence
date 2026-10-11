@@ -18,7 +18,7 @@
  */
 import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { TseOpenDataClient } from '../src/ingestion/tseOpenData.ts';
@@ -31,6 +31,7 @@ import {
   type ArtifactAssessment,
   type MemberAssessment
 } from '../src/audit/ingestionAssessment.ts';
+import { evaluateScopeGate, validateScope, type ScopeDeclaration } from '../src/audit/referenceScope.ts';
 
 const YEAR = Number(process.env.AUDIT_YEAR ?? 2022);
 const MAX_ROWS = process.env.AUDIT_MAX_ROWS === undefined ? 20_000 : Number(process.env.AUDIT_MAX_ROWS);
@@ -119,6 +120,22 @@ async function main(): Promise<void> {
 
   const summary = summarizeAssessment(artifacts);
   const chain = decideChainAuthorization(allMembers);
+
+  // Official scope gate (conservative): loaded from data/reference if present.
+  const observedMembers = artifacts.flatMap(a => a.members.map(m => m.member));
+  let scopeGate: ReturnType<typeof evaluateScopeGate> | null = null;
+  let scopeViolations: string[] = [];
+  let scopeContractVersion: string | null = null;
+  try {
+    const scopePath = path.resolve(process.cwd(), `data/reference/official_scope_${YEAR}.json`);
+    const scope = JSON.parse(await readFile(scopePath, 'utf8')) as ScopeDeclaration;
+    scopeContractVersion = scope.contract_version;
+    scopeViolations = validateScope(scope);
+    scopeGate = evaluateScopeGate(scope, observedMembers);
+  } catch {
+    scopeGate = null;
+  }
+
   const report = {
     generated_at: new Date().toISOString(),
     year: YEAR,
@@ -126,10 +143,16 @@ async function main(): Promise<void> {
     member_filter: MEMBER_FILTER ? [...MEMBER_FILTER] : null,
     policy: {
       note: 'Ingestão analítica BLOQUEADA até reconciliação com denominadores oficiais do TSE e evidência suficiente.',
-      authorization_rule: 'AUTHORIZED somente quando TODOS os membros passam: traceabilidade, layout oficialmente validado, scan COMPLETE, dedup completa, invariante de contadores e reconciliação de cobertura com tolerância zero.'
+      authorization_rule: 'AUTHORIZED somente quando TODOS os membros passam: traceabilidade, layout oficialmente validado, scan COMPLETE, dedup completa, invariante de contadores e reconciliação de cobertura com tolerância zero; E o escopo oficial está integralmente validado com inventário exato.'
     },
     summary,
     chain_authorization: chain,
+    scope: {
+      contract_version: scopeContractVersion,
+      declared: scopeGate !== null,
+      validation_violations: scopeViolations,
+      gate: scopeGate
+    },
     artifacts
   };
 
@@ -141,6 +164,12 @@ async function main(): Promise<void> {
   console.log(`artefatos=${summary.artifacts} membros=${summary.members} completos=${summary.proven_complete} parciais=${summary.partial} faltam_evidencia_oficial=${summary.missing_official_evidence}`);
   console.log(`autorizados=${summary.authorized_members} -> decisão da cadeia: ${chain.authorized ? 'AUTHORIZED' : 'BLOCKED'}`);
   console.log(`bloqueios: ${JSON.stringify(chain.blocker_counts)}`);
+  if (scopeGate) {
+    console.log(`escopo oficial (${scopeContractVersion}): ${scopeGate.authorized ? 'AUTHORIZED' : 'BLOCKED'} bloqueios=${JSON.stringify(scopeGate.blockers)} inventário_ok=${scopeGate.inventory?.complete}`);
+    if (scopeGate.reasons.length) console.log(`  razões: ${scopeGate.reasons.slice(0, 5).join(' | ')}`);
+  } else {
+    console.log('escopo oficial: não declarado (data/reference ausente)');
+  }
   for (const artifact of artifacts) {
     console.log(`- ${artifact.file_name} [${artifact.traceability.status}] membros=${artifact.members.length} sha256=${artifact.sha256_file}`);
   }

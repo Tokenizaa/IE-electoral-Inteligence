@@ -18,7 +18,9 @@
     "test:tse-select": "tsx tests/tse_selective_reader.test.ts",
     "test:tse-reconciliation": "tsx tests/tse_reconciliation.test.ts",
     "test:ingestion-audit": "tsx tests/ingestion_audit.test.ts",
-    "audit:ingestion": "tsx scripts/audit-ingestion.ts"
+    "test:reference-scope": "tsx tests/reference_scope.test.ts",
+    "audit:ingestion": "tsx scripts/audit-ingestion.ts",
+    "discover:tse": "tsx scripts/discover-tse-sources.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8",

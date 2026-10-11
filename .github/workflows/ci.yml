@@ -50,3 +50,6 @@ jobs:
 
       - name: Ingestion chain assessment safeguards
         run: bun run test:ingestion-audit
+
+      - name: Official reference scope safeguards
+        run: bun run test:reference-scope

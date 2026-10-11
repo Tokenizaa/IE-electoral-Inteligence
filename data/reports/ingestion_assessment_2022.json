@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-11T03:42:58.429Z",
+  "generated_at": "2026-10-11T04:05:10.817Z",
   "year": 2022,
   "scan_mode": "bounded:2000",
   "member_filter": null,
@@ -69,7 +69,15 @@
           },
           "duplicate_keys_tracked": 1922,
           "duplicate_scan_complete": true,
-          "scan_error": null
+          "scan_error": null,
+          "coverage_evaluation": {
+            "required_count": 0,
+            "missing_entries": [],
+            "null_denominators": [],
+            "incomplete": [],
+            "denominator_complete": false,
+            "reconciled_zero_tolerance": false
+          }
         },
         {
           "member": "votacao_candidato_munzona_2022_CE.csv",
@@ -91,7 +99,15 @@
           },
           "duplicate_keys_tracked": 2000,
           "duplicate_scan_complete": true,
-          "scan_error": null
+          "scan_error": null,
+          "coverage_evaluation": {
+            "required_count": 0,
+            "missing_entries": [],
+            "null_denominators": [],
+            "incomplete": [],
+            "denominator_complete": false,
+            "reconciled_zero_tolerance": false
+          }
         },
         {
           "member": "votacao_candidato_munzona_2022_AP.csv",
@@ -113,7 +129,15 @@
           },
           "duplicate_keys_tracked": 2000,
           "duplicate_scan_complete": true,
-          "scan_error": null
+          "scan_error": null,
+          "coverage_evaluation": {
+            "required_count": 0,
+            "missing_entries": [],
+            "null_denominators": [],
+            "incomplete": [],
+            "denominator_complete": false,
+            "reconciled_zero_tolerance": false
+          }
         },
         {
           "member": "votacao_candidato_munzona_2022_DF.csv",
@@ -135,7 +159,15 @@
           },
           "duplicate_keys_tracked": 2000,
           "duplicate_scan_complete": true,
-          "scan_error": null
+          "scan_error": null,
+          "coverage_evaluation": {
+            "required_count": 0,
+            "missing_entries": [],
+            "null_denominators": [],
+            "incomplete": [],
+            "denominator_complete": false,
+            "reconciled_zero_tolerance": false
+          }
         },
         {
           "member": "votacao_candidato_munzona_2022_AM.csv",
@@ -157,7 +189,15 @@
           },
           "duplicate_keys_tracked": 1948,
           "duplicate_scan_complete": true,
-          "scan_error": null
+          "scan_error": null,
+          "coverage_evaluation": {
+            "required_count": 0,
+            "missing_entries": [],
+            "null_denominators": [],
+            "incomplete": [],
+            "denominator_complete": false,
+            "reconciled_zero_tolerance": false
+          }
         },
         {
           "member": "votacao_candidato_munzona_2022_AC.csv",
@@ -179,7 +219,15 @@
           },
           "duplicate_keys_tracked": 2000,
           "duplicate_scan_complete": true,
-          "scan_error": null
+          "scan_error": null,
+          "coverage_evaluation": {
+            "required_count": 0,
+            "missing_entries": [],
+            "null_denominators": [],
+            "incomplete": [],
+            "denominator_complete": false,
+            "reconciled_zero_tolerance": false
+          }
         },
         {
           "member": "votacao_candidato_munzona_2022_BA.csv",
@@ -201,7 +249,15 @@
           },
           "duplicate_keys_tracked": 2000,
           "duplicate_scan_complete": true,
-          "scan_error": null
+          "scan_error": null,
+          "coverage_evaluation": {
+            "required_count": 0,
+            "missing_entries": [],
+            "null_denominators": [],
+            "incomplete": [],
+            "denominator_complete": false,
+            "reconciled_zero_tolerance": false
+          }
         },
         {
           "member": "votacao_candidato_munzona_2022_ES.csv",
@@ -223,7 +279,15 @@
           },
           "duplicate_keys_tracked": 1924,
           "duplicate_scan_complete": true,
-          "scan_error": null
+          "scan_error": null,
+          "coverage_evaluation": {
+            "required_count": 0,
+            "missing_entries": [],
+            "null_denominators": [],
+            "incomplete": [],
+            "denominator_complete": false,
+            "reconciled_zero_tolerance": false
+          }
         },
         {
           "member": "votacao_candidato_munzona_2022_GO.csv",
@@ -245,7 +309,15 @@
           },
           "duplicate_keys_tracked": 2000,
           "duplicate_scan_complete": true,
-          "scan_error": null
+          "scan_error": null,
+          "coverage_evaluation": {
+            "required_count": 0,
+            "missing_entries": [],
+            "null_denominators": [],
+            "incomplete": [],
+            "denominator_complete": false,
+            "reconciled_zero_tolerance": false
+          }
         },
         {
           "member": "votacao_candidato_munzona_2022_MA.csv",
@@ -267,7 +339,15 @@
           },
           "duplicate_keys_tracked": 2000,
           "duplicate_scan_complete": true,
-          "scan_error": null
+          "scan_error": null,
+          "coverage_evaluation": {
+            "required_count": 0,
+            "missing_entries": [],
+            "null_denominators": [],
+            "incomplete": [],
+            "denominator_complete": false,
+            "reconciled_zero_tolerance": false
+          }
         },
         {
           "member": "votacao_candidato_munzona_2022_MG.csv",
@@ -289,7 +369,15 @@
           },
           "duplicate_keys_tracked": 2000,
           "duplicate_scan_complete": true,
-          "scan_error": null
+          "scan_error": null,
+          "coverage_evaluation": {
+            "required_count": 0,
+            "missing_entries": [],
+            "null_denominators": [],
+            "incomplete": [],
+            "denominator_complete": false,
+            "reconciled_zero_tolerance": false
+          }
         },
         {
           "member": "votacao_candidato_munzona_2022_MS.csv",
@@ -311,7 +399,15 @@
           },
           "duplicate_keys_tracked": 1952,
           "duplicate_scan_complete": true,
-          "scan_error": null
+          "scan_error": null,
+          "coverage_evaluation": {
+            "required_count": 0,
+            "missing_entries": [],
+            "null_denominators": [],
+            "incomplete": [],
+            "denominator_complete": false,
+            "reconciled_zero_tolerance": false
+          }
         },
         {
           "member": "votacao_candidato_munzona_2022_MT.csv",
@@ -333,7 +429,15 @@
           },
           "duplicate_keys_tracked": 2000,
           "duplicate_scan_complete": true,
-          "scan_error": null
+          "scan_error": null,
+          "coverage_evaluation": {
+            "required_count": 0,
+            "missing_entries": [],
+            "null_denominators": [],
+            "incomplete": [],
+            "denominator_complete": false,
+            "reconciled_zero_tolerance": false
+          }
         },
         {
           "member": "votacao_candidato_munzona_2022_PA.csv",
@@ -355,7 +459,15 @@
           },
           "duplicate_keys_tracked": 2000,
           "duplicate_scan_complete": true,
-          "scan_error": null
+          "scan_error": null,
+          "coverage_evaluation": {
+            "required_count": 0,
+            "missing_entries": [],
+            "null_denominators": [],
+            "incomplete": [],
+            "denominator_complete": false,
+            "reconciled_zero_tolerance": false
+          }
         },
         {
           "member": "votacao_candidato_munzona_2022_BR.csv",
@@ -377,7 +489,15 @@
           },
           "duplicate_keys_tracked": 2000,
           "duplicate_scan_complete": true,
-          "scan_error": null
+          "scan_error": null,
+          "coverage_evaluation": {
+            "required_count": 0,
+            "missing_entries": [],
+            "null_denominators": [],
+            "incomplete": [],
+            "denominator_complete": false,
+            "reconciled_zero_tolerance": false
+          }
         },
         {
           "member": "votacao_candidato_munzona_2022_BRASIL.csv",
@@ -396,7 +516,15 @@
           },
           "duplicate_keys_tracked": 0,
           "duplicate_scan_complete": false,
-          "scan_error": "O membro \"votacao_candidato_munzona_2022_BRASIL.csv\" descompacta 4298078527 bytes, excedendo o limite de 3221225472 bytes por membro."
+          "scan_error": "O membro \"votacao_candidato_munzona_2022_BRASIL.csv\" descompacta 4298078527 bytes, excedendo o limite de 3221225472 bytes por membro.",
+          "coverage_evaluation": {
+            "required_count": 0,
+            "missing_entries": [],
+            "null_denominators": [],
+            "incomplete": [],
+            "denominator_complete": false,
+            "reconciled_zero_tolerance": false
+          }
         },
         {
           "member": "votacao_candidato_munzona_2022_PB.csv",
@@ -418,7 +546,15 @@
           },
           "duplicate_keys_tracked": 2000,
           "duplicate_scan_complete": true,
-          "scan_error": null
+          "scan_error": null,
+          "coverage_evaluation": {
+            "required_count": 0,
+            "missing_entries": [],
+            "null_denominators": [],
+            "incomplete": [],
+            "denominator_complete": false,
+            "reconciled_zero_tolerance": false
+          }
         },
         {
           "member": "votacao_candidato_munzona_2022_PE.csv",
@@ -440,7 +576,15 @@
           },
           "duplicate_keys_tracked": 2000,
           "duplicate_scan_complete": true,
-          "scan_error": null
+          "scan_error": null,
+          "coverage_evaluation": {
+            "required_count": 0,
+            "missing_entries": [],
+            "null_denominators": [],
+            "incomplete": [],
+            "denominator_complete": false,
+            "reconciled_zero_tolerance": false
+          }
         },
         {
           "member": "votacao_candidato_munzona_2022_PI.csv",
@@ -462,7 +606,15 @@
           },
           "duplicate_keys_tracked": 2000,
           "duplicate_scan_complete": true,
-          "scan_error": null
+          "scan_error": null,
+          "coverage_evaluation": {
+            "required_count": 0,
+            "missing_entries": [],
+            "null_denominators": [],
+            "incomplete": [],
+            "denominator_complete": false,
+            "reconciled_zero_tolerance": false
+          }
         },
         {
           "member": "votacao_candidato_munzona_2022_PR.csv",
@@ -484,7 +636,15 @@
           },
           "duplicate_keys_tracked": 2000,
           "duplicate_scan_complete": true,
-          "scan_error": null
+          "scan_error": null,
+          "coverage_evaluation": {
+            "required_count": 0,
+            "missing_entries": [],
+            "null_denominators": [],
+            "incomplete": [],
+            "denominator_complete": false,
+            "reconciled_zero_tolerance": false
+          }
         },
         {
           "member": "votacao_candidato_munzona_2022_RJ.csv",
@@ -506,7 +666,15 @@
           },
           "duplicate_keys_tracked": 2000,
           "duplicate_scan_complete": true,
-          "scan_error": null
+          "scan_error": null,
+          "coverage_evaluation": {
+            "required_count": 0,
+            "missing_entries": [],
+            "null_denominators": [],
+            "incomplete": [],
+            "denominator_complete": false,
+            "reconciled_zero_tolerance": false
+          }
         },
         {
           "member": "votacao_candidato_munzona_2022_RN.csv",
@@ -528,7 +696,15 @@
           },
           "duplicate_keys_tracked": 2000,
           "duplicate_scan_complete": true,
-          "scan_error": null
+          "scan_error": null,
+          "coverage_evaluation": {
+            "required_count": 0,
+            "missing_entries": [],
+            "null_denominators": [],
+            "incomplete": [],
+            "denominator_complete": false,
+            "reconciled_zero_tolerance": false
+          }
         },
         {
           "member": "votacao_candidato_munzona_2022_RO.csv",
@@ -550,7 +726,15 @@
           },
           "duplicate_keys_tracked": 1944,
           "duplicate_scan_complete": true,
-          "scan_error": null
+          "scan_error": null,
+          "coverage_evaluation": {
+            "required_count": 0,
+            "missing_entries": [],
+            "null_denominators": [],
+            "incomplete": [],
+            "denominator_complete": false,
+            "reconciled_zero_tolerance": false
+          }
         },
         {
           "member": "votacao_candidato_munzona_2022_RR.csv",
@@ -572,7 +756,15 @@
           },
           "duplicate_keys_tracked": 2000,
           "duplicate_scan_complete": true,
-          "scan_error": null
+          "scan_error": null,
+          "coverage_evaluation": {
+            "required_count": 0,
+            "missing_entries": [],
+            "null_denominators": [],
+            "incomplete": [],
+            "denominator_complete": false,
+            "reconciled_zero_tolerance": false
+          }
         },
         {
           "member": "votacao_candidato_munzona_2022_RS.csv",
@@ -594,7 +786,15 @@
           },
           "duplicate_keys_tracked": 2000,
           "duplicate_scan_complete": true,
-          "scan_error": null
+          "scan_error": null,
+          "coverage_evaluation": {
+            "required_count": 0,
+            "missing_entries": [],
+            "null_denominators": [],
+            "incomplete": [],
+            "denominator_complete": false,
+            "reconciled_zero_tolerance": false
+          }
         },
         {
           "member": "votacao_candidato_munzona_2022_SC.csv",
@@ -616,7 +816,15 @@
           },
           "duplicate_keys_tracked": 2000,
           "duplicate_scan_complete": true,
-          "scan_error": null
+          "scan_error": null,
+          "coverage_evaluation": {
+            "required_count": 0,
+            "missing_entries": [],
+            "null_denominators": [],
+            "incomplete": [],
+            "denominator_complete": false,
+            "reconciled_zero_tolerance": false
+          }
         },
         {
           "member": "votacao_candidato_munzona_2022_SE.csv",
@@ -638,7 +846,15 @@
           },
           "duplicate_keys_tracked": 1923,
           "duplicate_scan_complete": true,
-          "scan_error": null
+          "scan_error": null,
+          "coverage_evaluation": {
+            "required_count": 0,
+            "missing_entries": [],
+            "null_denominators": [],
+            "incomplete": [],
+            "denominator_complete": false,
+            "reconciled_zero_tolerance": false
+          }
         },
         {
           "member": "votacao_candidato_munzona_2022_SP.csv",
@@ -660,7 +876,15 @@
           },
           "duplicate_keys_tracked": 2000,
           "duplicate_scan_complete": true,
-          "scan_error": null
+          "scan_error": null,
+          "coverage_evaluation": {
+            "required_count": 0,
+            "missing_entries": [],
+            "null_denominators": [],
+            "incomplete": [],
+            "denominator_complete": false,
+            "reconciled_zero_tolerance": false
+          }
         },
         {
           "member": "votacao_candidato_munzona_2022_TO.csv",
@@ -682,7 +906,15 @@
           },
           "duplicate_keys_tracked": 2000,
           "duplicate_scan_complete": true,
-          "scan_error": null
+          "scan_error": null,
+          "coverage_evaluation": {
+            "required_count": 0,
+            "missing_entries": [],
+            "null_denominators": [],
+            "incomplete": [],
+            "denominator_complete": false,
+            "reconciled_zero_tolerance": false
+          }
         }
       ]
     }

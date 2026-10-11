@@ -116,11 +116,26 @@ invariantes consistentes em todos os membros.
 3. `scan_status === 'COMPLETE'` — varredura consumiu o membro por inteiro.
 4. `duplicate_scan_complete` — chave completa e não truncada.
 5. `counter_invariants_ok` — `records_read = aceitos+rejeitados+inválidos+truncados`.
-6. `official_denominator_present` — denominador oficial presente.
-7. `reconciled_zero_tolerance` — cobertura reconcilia com tolerância zero.
+6. `official_denominator_present` — **todo** o conjunto obrigatório de
+   `(dimensão, chave)` declarado possui denominador oficial (`expected_count !== null`).
+7. `reconciled_zero_tolerance` — **todo** o conjunto obrigatório reconcilia `COMPLETE`.
 
-Hoje **nenhum** membro satisfaz (2), (6) e (7); por isso a decisão da cadeia é
-**BLOCKED**.
+### Contrato de cobertura obrigatória (correção pós-auditoria)
+
+`evaluateCoverage(coverage, required)` exige um **conjunto explícito** de
+`CoverageRequirement { dimension, key }`. A autorização **nunca** é concedida por um
+subconjunto de referências:
+
+- conjunto obrigatório **vazio** ⇒ `denominator_complete = false` (não se afirma
+  completude sem escopo declarado);
+- referência **ausente** ⇒ `missing_entries`;
+- referência **presente sem denominador** (`expected_count === null`) ⇒ `null_denominators`;
+- referência **com denominador mas status ≠ COMPLETE** ⇒ `incomplete`.
+
+Regressão em `tests/ingestion_audit.test.ts` (bloco 6) prova que um relatório com
+apenas **parte** dos denominadores exigidos não satisfaz cobertura, mesmo com os
+dados presentes batendo. Hoje o harness declara `required_coverage = []` (não há
+escopo oficial publicado), então **nenhum** membro é autorizado → decisão **BLOCKED**.
 
 ## 5. Limitações explícitas
 

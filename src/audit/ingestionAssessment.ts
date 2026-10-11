@@ -139,24 +139,94 @@ export function classifyCompleteness(gate: AuthorizationGateInput): Completeness
   return officialMissing ? 'MISSING_OFFICIAL_EVIDENCE' : 'PARTIAL';
 }
 
+/** A single dimension/key that MUST be reconciled against an official denominator. */
+export interface CoverageRequirement {
+  dimension: TseCoverageEntry['dimension'];
+  key: string;
+}
+
+export interface CoverageEvaluation {
+  required_count: number;
+  /** Required (dimension,key) pairs with NO coverage entry at all. */
+  missing_entries: CoverageRequirement[];
+  /** Required pairs present but without an official denominator (expected_count null). */
+  null_denominators: CoverageRequirement[];
+  /** Required pairs with an official denominator but status !== COMPLETE. */
+  incomplete: Array<CoverageRequirement & { status: string }>;
+  /** Every required pair has a non-null official denominator. */
+  denominator_complete: boolean;
+  /** denominator_complete AND every required pair reconciles with zero tolerance. */
+  reconciled_zero_tolerance: boolean;
+}
+
+/**
+ * Evaluates coverage against an EXPLICIT required set. A positive claim requires
+ * a non-empty requirement set; anything absent, without a denominator, or not
+ * COMPLETE is reported. This is what prevents a partial reference set from being
+ * mistaken for full coverage.
+ */
+export function evaluateCoverage(coverage: TseCoverageEntry[], required: CoverageRequirement[]): CoverageEvaluation {
+  const missing_entries: CoverageRequirement[] = [];
+  const null_denominators: CoverageRequirement[] = [];
+  const incomplete: Array<CoverageRequirement & { status: string }> = [];
+
+  for (const requirement of required) {
+    const entry = coverage.find(item => item.dimension === requirement.dimension && item.key === requirement.key);
+    if (!entry) missing_entries.push(requirement);
+    else if (entry.expected_count === null) null_denominators.push(requirement);
+    else if (entry.status !== 'COMPLETE') incomplete.push({ ...requirement, status: entry.status });
+  }
+
+  const denominator_complete = required.length > 0 && missing_entries.length === 0 && null_denominators.length === 0;
+  const reconciled_zero_tolerance = denominator_complete && incomplete.length === 0;
+
+  return {
+    required_count: required.length,
+    missing_entries,
+    null_denominators,
+    incomplete,
+    denominator_complete,
+    reconciled_zero_tolerance
+  };
+}
+
 export interface BuildGateInput {
   traceability_verified: boolean;
   layout_officially_validated: boolean;
+  /**
+   * The FULL official scope that must be present and reconciled for this member.
+   * An empty set can never authorize: completeness cannot be asserted without a
+   * declared official scope.
+   */
+  required_coverage: CoverageRequirement[];
   report: TseReconciliationReport;
 }
 
-export function buildGate(input: BuildGateInput): AuthorizationGateInput {
+export interface GateBuilt {
+  gate: AuthorizationGateInput;
+  coverage_evaluation: CoverageEvaluation;
+}
+
+/** Builds the authorization gate plus the coverage evaluation that justifies it. */
+export function buildGateDetailed(input: BuildGateInput): GateBuilt {
   const { report } = input;
-  const coverage: TseCoverageEntry[] = report.coverage;
+  const coverage_evaluation = evaluateCoverage(report.coverage, input.required_coverage);
   return {
-    traceability_verified: input.traceability_verified,
-    layout_officially_validated: input.layout_officially_validated,
-    scan_status: report.summary.scan_status,
-    duplicate_scan_complete: report.duplicate_scan.complete,
-    counter_invariants_ok: counterInvariantViolations(report.summary.counters).length === 0,
-    official_denominator_present: coverage.some(entry => entry.expected_count !== null),
-    reconciled_zero_tolerance: coverage.length > 0 && coverage.every(entry => entry.status === 'COMPLETE')
+    gate: {
+      traceability_verified: input.traceability_verified,
+      layout_officially_validated: input.layout_officially_validated,
+      scan_status: report.summary.scan_status,
+      duplicate_scan_complete: report.duplicate_scan.complete,
+      counter_invariants_ok: counterInvariantViolations(report.summary.counters).length === 0,
+      official_denominator_present: coverage_evaluation.denominator_complete,
+      reconciled_zero_tolerance: coverage_evaluation.reconciled_zero_tolerance
+    },
+    coverage_evaluation
   };
+}
+
+export function buildGate(input: BuildGateInput): AuthorizationGateInput {
+  return buildGateDetailed(input).gate;
 }
 
 export interface MemberAssessment {
@@ -169,15 +239,22 @@ export interface MemberAssessment {
   duplicate_keys_tracked: number;
   duplicate_scan_complete: boolean;
   scan_error: string | null;
+  coverage_evaluation: CoverageEvaluation;
 }
 
 export function buildMemberAssessment(
   member: string,
   report: TseReconciliationReport,
   traceabilityVerified: boolean,
-  layoutOfficiallyValidated: boolean
+  layoutOfficiallyValidated: boolean,
+  requiredCoverage: CoverageRequirement[]
 ): MemberAssessment {
-  const gate = buildGate({ traceability_verified: traceabilityVerified, layout_officially_validated: layoutOfficiallyValidated, report });
+  const { gate, coverage_evaluation } = buildGateDetailed({
+    traceability_verified: traceabilityVerified,
+    layout_officially_validated: layoutOfficiallyValidated,
+    required_coverage: requiredCoverage,
+    report
+  });
   const decision = decideAuthorization(gate);
   return {
     member,
@@ -188,9 +265,19 @@ export function buildMemberAssessment(
     counters: report.summary.counters,
     duplicate_keys_tracked: report.duplicate_scan.tracked_keys,
     duplicate_scan_complete: report.duplicate_scan.complete,
-    scan_error: report.scan_error
+    scan_error: report.scan_error,
+    coverage_evaluation
   };
 }
+
+const EMPTY_COVERAGE: CoverageEvaluation = {
+  required_count: 0,
+  missing_entries: [],
+  null_denominators: [],
+  incomplete: [],
+  denominator_complete: false,
+  reconciled_zero_tolerance: false
+};
 
 /** Member whose scan could not run at all (e.g. parser/ZIP error): always PARTIAL. */
 export function buildErroredMemberAssessment(member: string, message: string): MemberAssessment {
@@ -203,7 +290,8 @@ export function buildErroredMemberAssessment(member: string, message: string): M
     counters: { records_read: 0, records_accepted: 0, records_rejected: 0, records_invalid: 0, records_truncated: 0 },
     duplicate_keys_tracked: 0,
     duplicate_scan_complete: false,
-    scan_error: message
+    scan_error: message,
+    coverage_evaluation: EMPTY_COVERAGE
   };
 }
 

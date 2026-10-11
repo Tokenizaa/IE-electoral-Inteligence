@@ -94,7 +94,9 @@ async function main(): Promise<void> {
         const report = await client.scanStoredZipMember(manifest.resource_id, YEAR, memberName, {
           maxRows: MAX_ROWS > 0 ? MAX_ROWS : undefined
         });
-        members.push(buildMemberAssessment(memberName, report, traceability.verified, layoutOk));
+        // No declared official scope yet -> required_coverage is empty, so the gate
+        // can NEVER authorize (completeness is not asserted without a scope).
+        members.push(buildMemberAssessment(memberName, report, traceability.verified, layoutOk, []));
       } catch (err) {
         members.push(buildErroredMemberAssessment(memberName, err instanceof Error ? err.message : String(err)));
       }

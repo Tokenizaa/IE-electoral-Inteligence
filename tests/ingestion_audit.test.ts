@@ -21,11 +21,13 @@ import {
   classifyCompleteness,
   decideAuthorization,
   decideChainAuthorization,
+  evaluateCoverage,
   isOfficialTseUrl,
   summarizeAssessment,
   type AuthorizationGateInput,
   type ArtifactAssessment
 } from '../src/audit/ingestionAssessment.ts';
+import type { TseCoverageEntry as CoverageEntry } from '../src/ingestion/tseReconciliation.ts';
 
 const OK_GATE: AuthorizationGateInput = {
   traceability_verified: true,
@@ -137,21 +139,47 @@ async function run() {
     assert.equal(report.duplicates.length, 1, 'duplicate detected in fixture');
     assert.equal(report.duplicate_scan.complete, true);
 
-    const gate = buildGate({ traceability_verified: true, layout_officially_validated: false, report });
+    const gate = buildGate({ traceability_verified: true, layout_officially_validated: false, required_coverage: [], report });
     const decision = decideAuthorization(gate);
-    assert.equal(decision.authorized, false, 'never authorized without validated layout + denominator');
+    assert.equal(decision.authorized, false, 'never authorized without validated layout + declared denominator scope');
     assert.ok(decision.blockers.includes('LAYOUT_NOT_OFFICIALLY_VALIDATED'));
     assert.ok(decision.blockers.includes('NO_OFFICIAL_DENOMINATOR'));
 
-    const member = buildMemberAssessment(memberName, report, true, false);
+    const member = buildMemberAssessment(memberName, report, true, false, []);
     assert.equal(member.class, 'MISSING_OFFICIAL_EVIDENCE', 'complete scan, missing official inputs');
     assert.equal(member.authorized, false);
     assert.equal(member.duplicate_scan_complete, true);
 
     // Bounded scan -> PARTIAL (scan insufficiency), never complete.
     const bounded = await client.scanStoredZipMember(resourceId, 2022, memberName, { maxRows: 1 });
-    const boundedMember = buildMemberAssessment(memberName, bounded, true, true);
+    const boundedMember = buildMemberAssessment(memberName, bounded, true, true, []);
     assert.equal(boundedMember.class, 'PARTIAL');
+    console.log('  OK');
+
+    // 6) partial reference set must NEVER satisfy coverage (audit finding).
+    console.log('6) coverage completeness contract');
+    const cov = (dimension: CoverageEntry['dimension'], key: string, expected: number | null, status: CoverageEntry['status']): CoverageEntry =>
+      ({ dimension, key, expected_count: expected, observed_count: expected, status, explanation: '' });
+    const required = [{ dimension: 'UF' as const, key: 'RR' }, { dimension: 'OFFICE' as const, key: '6' }];
+    // Only one of two required denominators present and COMPLETE -> NOT satisfied.
+    const partialEval = evaluateCoverage([cov('UF', 'RR', 10, 'COMPLETE')], required);
+    assert.equal(partialEval.denominator_complete, false, 'partial reference set is not a complete denominator');
+    assert.equal(partialEval.reconciled_zero_tolerance, false);
+    assert.equal(partialEval.missing_entries.length, 1, 'missing OFFICE denominator detected');
+    assert.equal(decideAuthorization({ ...OK_GATE, official_denominator_present: partialEval.denominator_complete, reconciled_zero_tolerance: partialEval.reconciled_zero_tolerance }).authorized, false);
+    // Full reference set, all COMPLETE -> satisfied.
+    const fullEval = evaluateCoverage([cov('UF', 'RR', 10, 'COMPLETE'), cov('OFFICE', '6', 5, 'COMPLETE')], required);
+    assert.equal(fullEval.denominator_complete, true);
+    assert.equal(fullEval.reconciled_zero_tolerance, true);
+    assert.equal(decideAuthorization({ ...OK_GATE, official_denominator_present: true, reconciled_zero_tolerance: true }).authorized, true);
+    // Present but no official denominator -> not satisfied.
+    assert.equal(evaluateCoverage([cov('UF', 'RR', null, 'UNVERIFIED'), cov('OFFICE', '6', 5, 'COMPLETE')], required).denominator_complete, false);
+    // Present, denominator, but PARTIAL -> denominator ok, reconciliation fails.
+    const partialStatus = evaluateCoverage([cov('UF', 'RR', 10, 'PARTIAL'), cov('OFFICE', '6', 5, 'COMPLETE')], required);
+    assert.equal(partialStatus.denominator_complete, true);
+    assert.equal(partialStatus.reconciled_zero_tolerance, false);
+    // Empty requirement set can never authorize.
+    assert.equal(evaluateCoverage([cov('UF', 'RR', 10, 'COMPLETE')], []).denominator_complete, false);
     console.log('  OK');
 
     // 5) chain summary + authorization
@@ -166,7 +194,7 @@ async function run() {
       sha256_file: sha256,
       validation_status: 'DOWNLOADED_HASHED_LAYOUT_REVIEW_REQUIRED',
       traceability: assessTraceability({ ...TRACE_OK, sha256_manifest: sha256, sha256_file: sha256 }),
-      members: [buildMemberAssessment(memberName, report, true, false), boundedMember]
+      members: [buildMemberAssessment(memberName, report, true, false, []), boundedMember]
     }];
     const summary = summarizeAssessment(artifacts);
     assert.equal(summary.artifacts, 1);

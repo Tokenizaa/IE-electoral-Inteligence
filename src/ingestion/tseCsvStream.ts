@@ -32,10 +32,11 @@ export function normalizeHeaderName(cell: string): string {
 }
 
 /**
- * Parses one CSV physical line preserving every cell byte-for-byte. Kept for
- * compatibility/testing; prefer `readCsvLines` for full RFC-4180 semantics.
- * Only RFC-4180 quote unescaping (`""` → `"`) is applied; surrounding quotes
- * are removed; NO trim happens.
+ * Parses ONE physical CSV line (no embedded newlines) into cells. Used by
+ * {@link readCsvHeader} for the header line; data rows go through
+ * {@link readCsvLines} for full RFC-4180 semantics (multiline fields).
+ * Applies only RFC-4180 quote unescaping (`""` → `"`) and strips surrounding
+ * quotes; it does NOT trim and does NOT preserve the raw quote characters.
  */
 export function parseCsvRecord(line: string, delimiter: string): string[] {
   const cells: string[] = [];
@@ -95,53 +96,56 @@ export async function* readCsvLines(
   const maxColumns = options.maxColumns ?? 2048;
   const encoding = options.encoding ?? 'latin1';
 
+  // `csv-parse` (streaming) enforces `max_record_size` WHILE parsing, so an
+  // oversized record is rejected before it is fully buffered. There is no
+  // native per-field limit, so `maxFieldBytes` is checked after each record.
   const parser = readable
     .setEncoding(encoding as BufferEncoding)
     .pipe(
       parse({
         delimiter,
         skip_empty_lines: false,
-        relax_quotes: true,
+        relax_quotes: false,
         trim: false,
         escape: '"',
         quote: '"',
-        record_delimiter: ['\r\n', '\n', '\r']
+        record_delimiter: ['\r\n', '\n', '\r'],
+        // Emit rows with a divergent column count instead of aborting: the caller
+        // classifies them (records_invalid) so a scan stays auditable end-to-end.
+        relax_column_count: true,
+        max_record_size: maxRecordBytes
       })
     );
 
-  let recordBytes = 0;
-  for await (const record of parser as AsyncIterable<string[]>) {
-    // Estimate bytes conservatively by joining with delimiter
-    const joined = record.join(delimiter);
-    recordBytes = Buffer.byteLength(joined, encoding === 'latin1' ? 'latin1' : 'utf8');
-    if (recordBytes > maxRecordBytes) {
-      const err = new CsvParserError('RECORD_TOO_LARGE', `Registro CSV excede o limite de ${maxRecordBytes} bytes.`, {
-        max_record_bytes: maxRecordBytes,
-        approx_bytes: recordBytes
-      });
-      parser.destroy(err);
-      throw err;
-    }
-    for (const field of record) {
-      const fb = Buffer.byteLength(field, encoding === 'latin1' ? 'latin1' : 'utf8');
-      if (fb > maxFieldBytes) {
-        const err = new CsvParserError('FIELD_TOO_LARGE', `Campo CSV excede o limite de ${maxFieldBytes} bytes.`, {
-          max_field_bytes: maxFieldBytes,
-          approx_bytes: fb
+  try {
+    for await (const record of parser as AsyncIterable<string[]>) {
+      if (record.length > maxColumns) {
+        throw new CsvParserError('TOO_MANY_COLUMNS', `Registro com mais colunas que o limite (${record.length} > ${maxColumns}).`, {
+          column_count: record.length,
+          max_columns: maxColumns
         });
-        parser.destroy(err);
-        throw err;
       }
+      for (const field of record) {
+        const bytes = Buffer.byteLength(field, encoding as BufferEncoding);
+        if (bytes > maxFieldBytes) {
+          throw new CsvParserError('FIELD_TOO_LARGE', `Campo CSV excede o limite de ${maxFieldBytes} bytes.`, {
+            max_field_bytes: maxFieldBytes,
+            approx_bytes: bytes
+          });
+        }
+      }
+      yield record;
     }
-    if (record.length > maxColumns) {
-      const err = new CsvParserError('TOO_MANY_COLUMNS', `Registro com mais colunas que o limite (${record.length} > ${maxColumns}).`, {
-        column_count: record.length,
-        max_columns: maxColumns
+  } catch (err) {
+    if (err instanceof CsvParserError) throw err;
+    if ((err as { code?: string })?.code === 'CSV_MAX_RECORD_SIZE') {
+      throw new CsvParserError('RECORD_TOO_LARGE', `Registro CSV excede o limite de ${maxRecordBytes} bytes.`, {
+        max_record_bytes: maxRecordBytes
       });
-      parser.destroy(err);
-      throw err;
     }
-    yield record;
+    throw err;
+  } finally {
+    parser.destroy();
   }
 }
 

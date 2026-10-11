@@ -25,9 +25,10 @@ import {
 } from '../src/ingestion/tseReconciliation.ts';
 import { readCsvLines } from '../src/ingestion/tseCsvStream.ts';
 import { Readable } from 'node:stream';
+import { createHash } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 
 const CSV_PARSER_VERSION = (await import('../src/ingestion/tseCsvStream.ts')).CSV_PARSER_VERSION;
 
@@ -270,6 +271,101 @@ async function run() {
   assert.equal(determineScanStatus({ fullyConsumed: false, maxRowsReached: false, cancelled: true, error: false, sizeLimitReached: false }), 'PARTIAL_CANCELLED');
   assert.equal(determineScanStatus({ fullyConsumed: false, maxRowsReached: false, cancelled: false, error: true, sizeLimitReached: false }), 'PARTIAL_ERROR');
   assert.equal(determineScanStatus({ fullyConsumed: true, maxRowsReached: false, cancelled: false, error: false, sizeLimitReached: false }), 'COMPLETE');
+  console.log('  OK');
+
+  // 17) scanStoredZipMember end-to-end: streaming aggregation (no records[]), filters,
+  // record classification, and scan_status gating of coverage.
+  console.log('17) scanStoredZipMember integration');
+  {
+    const resourceId = '40fdcf49-256a-4c81-87cf-711545bd1528';
+    const scanRoot = await mkdtemp(path.join(os.tmpdir(), 'tse-scan-'));
+    try {
+      const yearDir = path.join(scanRoot, '2022');
+      await mkdir(yearDir, { recursive: true });
+      const memberName = 'votacao.csv';
+      const fixture = Buffer.from(
+        'ANO_ELEICAO;SG_UF;CD_CARGO;NR_TURNO;CD_MUNICIPIO;NR_ZONA;SQ_CANDIDATO;QT_VOTOS\n' +
+        '2022;AC;6;1;1001;1;100;100\n' +
+        '2022;AC;6;1;1002;1;101;200\n' +
+        '2022;RS;7;2;2001;5;200;300\n' +
+        '2022;AC;6;1\n' +
+        '2022;AC;6;1;1001;1;100;50\n',
+        'latin1'
+      );
+      const zipBytes = buildZip([{ name: memberName, data: fixture }]);
+      const zipPath = path.join(yearDir, `${resourceId}-scan.zip`);
+      await writeFile(zipPath, zipBytes);
+      const sha256 = createHash('sha256').update(zipBytes).digest('hex');
+      await writeFile(`${zipPath}.manifest.json`, JSON.stringify({
+        source: 'Portal de Dados Abertos do TSE',
+        resource_id: resourceId,
+        dataset_id: 'resultados-2022',
+        dataset_title: 'Resultados - 2022',
+        resource_name: 'Votação nominal',
+        resource_url: 'https://cdn.tse.jus.br/estatistica/teste/resultados.zip',
+        package_modified_at: null,
+        resource_modified_at: null,
+        requested_year: 2022,
+        detected_kind: 'VOTACAO_NOMINAL_MUNICIPIO_ZONA',
+        format: 'ZIP',
+        size_bytes: zipBytes.length,
+        sha256,
+        downloaded_at: '2026-01-01T00:00:00.000Z',
+        validation_status: 'DOWNLOADED_HASHED_LAYOUT_REVIEW_REQUIRED',
+        validation: { extension_matches_format: false, signature_valid: true, csv_header: null, notes: [] },
+        local_file: zipPath
+      }), { encoding: 'utf8' });
+      const client = new TseOpenDataClient({ downloadDir: scanRoot });
+
+      // 17a) full scan: invalid + duplicate classification, COMPLETE status, coverage COMPLETE.
+      const full = await client.scanStoredZipMember(resourceId, 2022, memberName, {
+        expected: {
+          source_ref: 'fixture',
+          method: 'FLAT_FILE_LINE_COUNT',
+          per_dimension: {
+            'UF:AC': { UF: 'AC', expected_count: 3, source_ref: 'fixture', method: 'FLAT_FILE_LINE_COUNT' },
+            'UF:RS': { UF: 'RS', expected_count: 1, source_ref: 'fixture', method: 'FLAT_FILE_LINE_COUNT' }
+          }
+        }
+      });
+      assert.equal(full.summary.scan_status, 'COMPLETE', 'full scan COMPLETE');
+      assert.equal(full.summary.counters.records_read, 5, '5 data rows read');
+      assert.equal(full.summary.counters.records_invalid, 1, 'malformed row = inválido');
+      assert.equal(full.summary.counters.records_accepted, 4);
+      assert.equal(full.summary.counters.records_rejected, 0);
+      assert.equal(full.duplicates.length, 1, 'duplicate composite key detected');
+      assert.equal(full.duplicates[0].count, 2);
+      assert.equal(full.coverage.find(c => c.dimension === 'UF' && c.key === 'AC')!.status, 'COMPLETE');
+      console.log('  OK full');
+
+      // 17b) filters reject non-matching rows and exclude them from aggregates.
+      const filtered = await client.scanStoredZipMember(resourceId, 2022, memberName, {
+        filters: [{ column: 'SG_UF', values: ['AC'] }]
+      });
+      assert.equal(filtered.summary.counters.records_rejected, 1, 'RS row rejected by filter');
+      assert.equal(filtered.summary.counters.records_accepted, 3);
+      assert.equal(filtered.summary.dimensions.UF.some(u => u.UF === 'RS'), false, 'rejected UF absent from aggregates');
+      console.log('  OK filters');
+
+      // 17c) maxRows -> PARTIAL; coverage must NOT be COMPLETE even when counts match.
+      const partial = await client.scanStoredZipMember(resourceId, 2022, memberName, {
+        maxRows: 1,
+        expected: {
+          source_ref: 'fixture',
+          method: 'FLAT_FILE_LINE_COUNT',
+          per_dimension: {
+            'UF:AC': { UF: 'AC', expected_count: 1, source_ref: 'fixture', method: 'FLAT_FILE_LINE_COUNT' }
+          }
+        }
+      });
+      assert.equal(partial.summary.scan_status, 'PARTIAL_MAX_ROWS');
+      assert.equal(partial.summary.counters.records_accepted, 1);
+      assert.equal(partial.coverage.find(c => c.dimension === 'UF' && c.key === 'AC')!.status, 'PARTIAL', 'partial scan cannot yield COMPLETE coverage');
+      console.log('  OK partial gate');
+    } finally {
+      await rm(scanRoot, { recursive: true, force: true });
+    }
+  }
   console.log('  OK');
 
   console.log('\n=== ALL RECONCILIATION TESTS PASSED ===');

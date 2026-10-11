@@ -44,3 +44,6 @@ jobs:
 
       - name: TSE selective streaming reader safeguards
         run: bun run test:tse-select
+
+      - name: TSE scan and reconciliation safeguards
+        run: bun run test:tse-reconciliation

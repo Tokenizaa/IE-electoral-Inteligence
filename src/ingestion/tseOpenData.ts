@@ -12,13 +12,13 @@ import path from 'node:path';
 import { Readable, Transform } from 'node:stream';
 import { createInterface } from 'node:readline';
 import { pipeline } from 'node:stream/promises';
-import { readCsvHeader, readCsvLines } from './tseCsvStream.ts';
+import { readCsvHeader, readCsvLines, normalizeHeaderName, CSV_PARSER_VERSION } from './tseCsvStream.ts';
 import {
   type TseReconciliationReport,
   type TseReconciliationSummary,
-  buildDimensionCounts,
-  detectDivergences,
-  detectDuplicates,
+  type TseDimensionCount,
+  type TseDuplicateFinding,
+  type TseExpectedCount,
   detectGaps,
   reconcileAgainstExpected,
   determineScanStatus
@@ -894,17 +894,8 @@ export class TseOpenDataClient {
 
     const resolved = await this.resolveStoredZipSource(resourceId, year, options.storage);
     const spool = resolved.spool;
-    let fullyConsumed = false;
-    let maxRowsReached = false;
-    let cancelled = false;
-    let error = false;
-    let sizeLimitReached = false;
-
     try {
-      // Separate ZIP limits from scan options
-      const zipLimits: Partial<TseZipLimits> = {};
-      if (options.maxRows !== undefined) (zipLimits as any).maxRows = options.maxRows; // not used but kept for compatibility
-      const memberStream = await readZipMember(resolved.zipSource, memberName, zipLimits);
+      const memberStream = await readZipMember(resolved.zipSource, memberName);
       const headerResult = await readCsvHeader(memberStream.stream, 128 * 1024);
       const normalizedHeader = headerResult.header;
       const delimiter = headerResult.delimiter;
@@ -913,53 +904,100 @@ export class TseOpenDataClient {
         throw new Error(`O membro ${memberName} não possui cabeçalho CSV legível.`);
       }
 
-      const layoutValidation = validateTseLayout(year, 'VOTACAO_NOMINAL_MUNICIPIO_ZONA', normalizedHeader);
-      const layoutDivergences = detectDivergences(normalizedHeader, layoutValidation);
-
-      const records: string[][] = [];
+      // Streaming aggregation: no records[] accumulation. Only counters and counted maps.
       let recordsRead = 0;
       let recordsAccepted = 0;
       let recordsRejected = 0;
       let recordsInvalid = 0;
-      let recordsTruncated = 0;
+      const recordsTruncated = 0;
+      let fullyConsumed = false;
+      let maxRowsReached = false;
 
-      try {
-        for await (const row of readCsvLines(memberStream.stream, { delimiter })) {
-          recordsRead++;
-          if (options.maxRows && recordsAccepted >= options.maxRows) {
-            recordsTruncated = recordsRead - recordsAccepted;
-            maxRowsReached = true;
-            break;
-          }
-          records.push(row);
-          recordsAccepted++;
-        }
-        fullyConsumed = !maxRowsReached;
-      } catch (err) {
-        error = true;
-        fullyConsumed = false;
-        throw err;
+      const ufMap = new Map<string, number>();
+      const anoMap = new Map<string, number>();
+      const cargoMap = new Map<string, number>();
+      const turnoMap = new Map<string, number>();
+
+      const dimIdx = {
+        UF: normalizedHeader.indexOf('SG_UF'),
+        ANO: normalizedHeader.indexOf('ANO_ELEICAO'),
+        CARGO: normalizedHeader.indexOf('CD_CARGO'),
+        TURNO: normalizedHeader.indexOf('NR_TURNO')
+      };
+
+      // Column-name → accepted-value set. A filter whose column is absent rejects nothing.
+      const filterIndexes: Array<{ idx: number; values: Set<string> }> = [];
+      for (const filter of options.filters ?? []) {
+        const idx = normalizedHeader.indexOf(normalizeHeaderName(filter.column));
+        if (idx >= 0) filterIndexes.push({ idx, values: new Set(filter.values) });
       }
 
-      const dimensions = buildDimensionCounts(records, normalizedHeader);
-
+      // Duplicate detection with bounded memory: count + up to 3 examples, max keys.
       const dupKeyCols = ['CD_MUNICIPIO', 'NR_ZONA', 'CD_CARGO', 'SQ_CANDIDATO'];
-      const duplicates = detectDuplicates(records, normalizedHeader, dupKeyCols);
+      const dupKeyIndexes = dupKeyCols.map(col => normalizedHeader.indexOf(col)).filter(i => i >= 0);
+      const dupMap = new Map<string, { count: number; examples: string[][] }>();
+      const MAX_DUP_KEYS = 10000;
+
+      for await (const row of readCsvLines(memberStream.stream, { delimiter })) {
+        recordsRead++;
+        // Column count diverging from the header is classified inválido.
+        if (row.length !== normalizedHeader.length) {
+          recordsInvalid++;
+          continue;
+        }
+        // Filters run before acceptance: excluded rows are classified rejected.
+        let matches = true;
+        for (const { idx, values } of filterIndexes) {
+          if (!values.has(row[idx])) { matches = false; break; }
+        }
+        if (!matches) {
+          recordsRejected++;
+          continue;
+        }
+        if (options.maxRows !== undefined && recordsAccepted >= options.maxRows) {
+          maxRowsReached = true;
+          break;
+        }
+        recordsAccepted++;
+        if (dimIdx.UF >= 0) ufMap.set(row[dimIdx.UF], (ufMap.get(row[dimIdx.UF]) ?? 0) + 1);
+        if (dimIdx.ANO >= 0) anoMap.set(row[dimIdx.ANO], (anoMap.get(row[dimIdx.ANO]) ?? 0) + 1);
+        if (dimIdx.CARGO >= 0) cargoMap.set(row[dimIdx.CARGO], (cargoMap.get(row[dimIdx.CARGO]) ?? 0) + 1);
+        if (dimIdx.TURNO >= 0) turnoMap.set(row[dimIdx.TURNO], (turnoMap.get(row[dimIdx.TURNO]) ?? 0) + 1);
+
+        if (dupKeyIndexes.length > 0 && dupMap.size < MAX_DUP_KEYS) {
+          const key = dupKeyIndexes.map(i => row[i] ?? '').join('|');
+          const entry = dupMap.get(key) ?? { count: 0, examples: [] };
+          entry.count++;
+          if (entry.examples.length < 3) entry.examples.push([...row]);
+          dupMap.set(key, entry);
+        }
+      }
+      // Only a loop that ended by exhausting the stream (not by maxRows) is fully consumed.
+      fullyConsumed = !maxRowsReached;
+
+      const dimensions = {
+        UF: Array.from(ufMap.entries()).map(([key, count]) => ({ UF: key, count } as TseDimensionCount)),
+        ANO: Array.from(anoMap.entries()).map(([key, count]) => ({ ANO: key, count } as TseDimensionCount)),
+        CARGO: Array.from(cargoMap.entries()).map(([key, count]) => ({ CARGO: key, count } as TseDimensionCount)),
+        TURNO: Array.from(turnoMap.entries()).map(([key, count]) => ({ TURNO: key, count } as TseDimensionCount))
+      };
+
+      const duplicates: TseDuplicateFinding[] = [];
+      for (const [keyValue, { count, examples }] of dupMap) {
+        if (count > 1) {
+          duplicates.push({ key_columns: dupKeyCols, key_value: keyValue, count, example_records: examples });
+        }
+      }
+
+      // Status must be resolved BEFORE coverage, so a partial scan can never claim COMPLETE.
+      const scanStatus = determineScanStatus({ fullyConsumed, maxRowsReached, cancelled: false, error: false, sizeLimitReached: false });
 
       const expected = options.expected ?? null;
-      const coverage = reconcileAgainstExpected(dimensions, expected);
+      const coverage = reconcileAgainstExpected(dimensions, expected, scanStatus);
 
-      const expectedArray: Array<{ UF?: string; ANO?: string; CARGO?: string; TURNO?: string; expected_count: number; source_ref: string; method: string }> = [];
-      if (expected?.per_dimension) {
-        for (const [, exp] of Object.entries(expected.per_dimension)) {
-          expectedArray.push(exp);
-        }
-      }
+      const expectedArray: TseExpectedCount[] = expected?.per_dimension ? Object.values(expected.per_dimension) : [];
       const gaps = detectGaps(dimensions, expectedArray);
 
-      const scanStatus = determineScanStatus({ fullyConsumed, maxRowsReached, cancelled, error, sizeLimitReached });
-
-      const { CSV_PARSER_VERSION } = await import('./tseCsvStream.ts');
       const summary: TseReconciliationSummary = {
         source: {
           resource_id: resourceId,
@@ -983,12 +1021,7 @@ export class TseOpenDataClient {
         },
         scan_status: scanStatus,
         filters: options.filters,
-        dimensions: {
-          UF: dimensions.UF,
-          ANO: dimensions.ANO,
-          CARGO: dimensions.CARGO,
-          TURNO: dimensions.TURNO
-        }
+        dimensions
       };
 
       return {

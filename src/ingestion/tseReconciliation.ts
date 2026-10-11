@@ -179,6 +179,7 @@ export function buildDimensionCounts(
 
 /**
  * Detects gaps: expected dimensions present in expected but absent in observed.
+ * Also detects EXCESS: observed dimensions that exceed expected counts.
  * expected: array of { dimension key + expected_count + source_ref + method }
  * observed: Map<dimensionKey, observed_count> from buildDimensionCounts
  */
@@ -198,6 +199,8 @@ export function detectGaps(
     const dim = exp.UF !== undefined ? 'UF' : exp.ANO !== undefined ? 'ANO' : exp.CARGO !== undefined ? 'CARGO' : 'TURNO';
     const key = exp[dim]!;
     const obsCount = obsMaps[dim].get(key) ?? 0;
+    
+    // Gap: observed < expected
     if (obsCount < exp.expected_count) {
       gaps.push({
         dimension: dim,
@@ -207,6 +210,18 @@ export function detectGaps(
         source_ref: exp.source_ref,
         method: exp.method,
         explanation: `Dimensão ${dim}=${key}: esperado ${exp.expected_count} (${exp.method} via ${exp.source_ref}), observado ${obsCount}`
+      });
+    }
+    // Excess: observed > expected
+    else if (obsCount > exp.expected_count) {
+      gaps.push({
+        dimension: dim,
+        key,
+        expected_count: exp.expected_count,
+        observed_count: obsCount,
+        source_ref: exp.source_ref,
+        method: exp.method,
+        explanation: `Dimensão ${dim}=${key}: observado ${obsCount} EXCEDE esperado ${exp.expected_count} (${exp.method} via ${exp.source_ref})`
       });
     }
   }
@@ -280,11 +295,13 @@ export function detectDivergences(
 /**
  * Reconciles observed counts against expected reference.
  * expected: optional object with source_ref, method, and per_dimension counts.
+ * scanStatus: the scan status - coverage CANNOT be COMPLETE if scan is not COMPLETE.
  * Returns coverage entries with status COMPLETE/PARTIAL/MISSING/INVALID/UNVERIFIED.
  */
 export function reconcileAgainstExpected(
   observed: { UF: TseDimensionCount[]; ANO: TseDimensionCount[]; CARGO: TseDimensionCount[]; TURNO: TseDimensionCount[] },
-  expected: { source_ref: string; method: string; per_dimension?: Record<string, TseExpectedCount> } | null
+  expected: { source_ref: string; method: string; per_dimension?: Record<string, TseExpectedCount> } | null,
+  scanStatus?: string
 ): TseCoverageEntry[] {
   const coverage: TseCoverageEntry[] = [];
   const obsMaps = {
@@ -293,6 +310,10 @@ export function reconcileAgainstExpected(
     CARGO: new Map(observed.CARGO.map(o => [o.CARGO!, o.count])),
     TURNO: new Map(observed.TURNO.map(o => [o.TURNO!, o.count]))
   };
+
+  // No scanStatus (pure/legacy call) keeps prior behavior; an explicit status
+  // other than COMPLETE forbids any coverage entry from being COMPLETE.
+  const scanIsComplete = scanStatus === undefined || scanStatus === 'COMPLETE';
 
   if (!expected || !expected.per_dimension) {
     // No expected reference -> all UNVERIFIED
@@ -339,6 +360,11 @@ export function reconcileAgainstExpected(
     else if (obsCount > 0) status = 'PARTIAL';
     else if (obsCount === 0 && exp.expected_count > 0) status = 'MISSING';
 
+    // COMPLETE coverage ONLY if scan is COMPLETE
+    if (status === 'COMPLETE' && !scanIsComplete) {
+      status = 'PARTIAL';
+    }
+
     const dimLabel = dim === 'UF' ? 'UF' : dim === 'ANO' ? 'YEAR' : dim === 'CARGO' ? 'OFFICE' : 'TURN';
     coverage.push({
       dimension: dimLabel,
@@ -358,13 +384,15 @@ export function reconcileAgainstExpected(
   // SOURCE level total
   const totalExpected = Object.values(expected.per_dimension).reduce((s, e) => s + e.expected_count, 0);
   const totalObserved = observed.UF.reduce((s, o) => s + o.count, 0);
+  let totalStatus: TseCoverageEntry['status'] = totalObserved === totalExpected ? 'COMPLETE' : totalObserved > 0 ? 'PARTIAL' : 'MISSING';
+  if (totalStatus === 'COMPLETE' && !scanIsComplete) totalStatus = 'PARTIAL';
   coverage.push({
     dimension: 'SOURCE',
     key: 'TOTAL',
     source_ref: expected.source_ref,
     expected_count: totalExpected,
     observed_count: totalObserved,
-    status: totalObserved === totalExpected ? 'COMPLETE' : totalObserved > 0 ? 'PARTIAL' : 'MISSING',
+    status: totalStatus,
     explanation: totalObserved === totalExpected
       ? `Total confere com ${expected.method} (${expected.source_ref})`
       : `Total divergente: ${totalObserved}/${totalExpected} (${expected.method} via ${expected.source_ref})`

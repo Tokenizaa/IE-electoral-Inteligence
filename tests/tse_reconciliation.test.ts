@@ -120,13 +120,19 @@ async function run() {
       'CARGO:6': { CARGO: '6', expected_count: 2, source_ref: 'TSE Boletim 2022', method: 'SUM_FROM_TSE_TOTALIZATION' }
     }
   };
-  const coverage = reconcileAgainstExpected(dims, expectedRef);
+  const coverage = reconcileAgainstExpected(dims, expectedRef, 'COMPLETE');
   const ufAC = coverage.find(c => c.dimension === 'UF' && c.key === 'AC')!;
   assert.equal(ufAC.status, 'COMPLETE', 'UF AC matches expected');
   const ufRS = coverage.find(c => c.dimension === 'UF' && c.key === 'RS')!;
   assert.equal(ufRS.status, 'COMPLETE', 'UF RS matches expected');
   const cargo6 = coverage.find(c => c.dimension === 'OFFICE' && c.key === '6')!;
   assert.equal(cargo6.status, 'COMPLETE', 'CARGO 6 matches expected');
+
+  // 6b) No explicit scan_status => NEVER COMPLETE (Issue #7 acceptance).
+  const noStatus = reconcileAgainstExpected(dims, expectedRef);
+  assert.ok(noStatus.every(c => c.status !== 'COMPLETE'), 'absent scan_status cannot yield COMPLETE');
+  const partialStatus = reconcileAgainstExpected(dims, expectedRef, 'PARTIAL_MAX_ROWS');
+  assert.ok(partialStatus.every(c => c.status !== 'COMPLETE'), 'non-COMPLETE scan_status cannot yield COMPLETE');
   console.log('  OK');
 
   // 7) determineScanStatus
@@ -177,7 +183,7 @@ async function run() {
         'UF:AC': { UF: 'AC', expected_count: 2, source_ref: 'Fixture', method: 'FLAT_FILE_LINE_COUNT' },
         'UF:RS': { UF: 'RS', expected_count: 1, source_ref: 'Fixture', method: 'FLAT_FILE_LINE_COUNT' }
       }
-    });
+    }, 'COMPLETE');
     const covAC = report.find(c => c.dimension === 'UF' && c.key === 'AC')!;
     assert.equal(covAC.status, 'COMPLETE');
     console.log('  OK');
@@ -294,9 +300,24 @@ async function run() {
         'latin1'
       );
       const malformed = Buffer.from('ANO_ELEICAO;SG_UF\n2022;AC\n2022;"AC\n', 'latin1');
+      // Duplicate normalized header column (SG_UF twice) -> ambiguous filter.
+      const ambiguous = Buffer.from(
+        'ANO_ELEICAO;SG_UF;SG_UF;CD_CARGO;NR_TURNO;CD_MUNICIPIO;NR_ZONA;SQ_CANDIDATO\n' +
+        '2022;AC;AC;6;1;1001;1;100\n',
+        'latin1'
+      );
+      // Missing SQ_CANDIDATO -> dedup key incomplete, must NOT use partial key.
+      const noKey = Buffer.from(
+        'ANO_ELEICAO;SG_UF;CD_CARGO;NR_TURNO;CD_MUNICIPIO;NR_ZONA\n' +
+        '2022;AC;6;1;1001;1\n' +
+        '2022;AC;6;1;1001;1\n',
+        'latin1'
+      );
       const zipBytes = buildZip([
         { name: memberName, data: fixture },
-        { name: 'bad.csv', data: malformed }
+        { name: 'bad.csv', data: malformed },
+        { name: 'ambig.csv', data: ambiguous },
+        { name: 'nokey.csv', data: noKey }
       ]);
       const zipPath = path.join(yearDir, `${resourceId}-scan.zip`);
       await writeFile(zipPath, zipBytes);
@@ -400,6 +421,22 @@ async function run() {
       assert.ok(bad.scan_error, 'scan_error populated');
       assert.ok(bad.coverage.every(c => c.status !== 'COMPLETE'), 'partial scan cannot yield COMPLETE coverage');
       console.log('  OK syntax-error partial');
+
+      // 17h) ambiguous filter (duplicate normalized column) is rejected.
+      await assert.rejects(
+        () => client.scanStoredZipMember(resourceId, 2022, 'ambig.csv', { filters: [{ column: 'SG_UF', values: ['AC'] }] }),
+        /Filtro ambíguo/
+      );
+      console.log('  OK ambiguous-filter reject');
+
+      // 17i) incomplete dedup key (missing SQ_CANDIDATO): NO partial key, flagged.
+      const nokey = await client.scanStoredZipMember(resourceId, 2022, 'nokey.csv');
+      assert.deepEqual(nokey.duplicate_scan.missing_columns, ['SQ_CANDIDATO']);
+      assert.equal(nokey.duplicate_scan.complete, false, 'dedup incomplete without full key');
+      assert.equal(nokey.duplicate_scan.tracked_keys, 0, 'no partial-key tracking');
+      assert.equal(nokey.duplicates.length, 0, 'no false duplicates from partial key');
+      assert.ok(nokey.limitations.some(l => /Deduplicação indisponível/.test(l)), 'dedup limitation declared');
+      console.log('  OK dedup key incomplete');
     } finally {
       await rm(scanRoot, { recursive: true, force: true });
     }

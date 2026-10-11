@@ -64,10 +64,14 @@ export interface TseDuplicateFinding {
  * be exhaustive.
  */
 export interface TseDuplicateScanInfo {
+  /** Composite key requested for duplicate detection (declared intent). */
   key_columns: string[];
+  /** Key columns absent or ambiguous in the header. Non-empty => dedup unavailable. */
+  missing_columns: string[];
   tracked_keys: number;
   max_keys: number;
   truncated: boolean;
+  /** True only when every key column exists uniquely AND the key cap was not hit. */
   complete: boolean;
 }
 
@@ -339,7 +343,9 @@ export function detectDivergences(
 /**
  * Reconciles observed counts against expected reference.
  * expected: optional object with source_ref, method, and per_dimension counts.
- * scanStatus: the scan status - coverage CANNOT be COMPLETE if scan is not COMPLETE.
+ * scanStatus: the scan status. Coverage is COMPLETE ONLY when scanStatus is
+ *   exactly 'COMPLETE'; omitting it (undefined) or passing any other value forces
+ *   PARTIAL, so no call can claim COMPLETE without an explicit complete scan.
  * Returns coverage entries with status COMPLETE/PARTIAL/MISSING/INVALID/UNVERIFIED.
  */
 export function reconcileAgainstExpected(
@@ -355,9 +361,10 @@ export function reconcileAgainstExpected(
     TURNO: new Map(observed.TURNO.map(o => [o.TURNO!, o.count]))
   };
 
-  // No scanStatus (pure/legacy call) keeps prior behavior; an explicit status
-  // other than COMPLETE forbids any coverage entry from being COMPLETE.
-  const scanIsComplete = scanStatus === undefined || scanStatus === 'COMPLETE';
+  // Coverage may be COMPLETE ONLY when the caller passes scan_status === 'COMPLETE'.
+  // An omitted scanStatus is NOT treated as complete (absence => not verified), so no
+  // call can claim exhaustive coverage without an explicit, successful scan.
+  const scanIsComplete = scanStatus === 'COMPLETE';
 
   if (!expected || !expected.per_dimension) {
     // No expected reference -> all UNVERIFIED

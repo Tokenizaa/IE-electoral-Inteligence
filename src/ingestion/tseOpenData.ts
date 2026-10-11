@@ -907,16 +907,19 @@ export class TseOpenDataClient {
         throw new Error(`O membro ${memberName} não possui cabeçalho CSV legível.`);
       }
 
-      // Filters MUST resolve to a real header column; a declared-but-absent
-      // column is rejected up-front instead of being silently ignored.
+      // Filters MUST resolve to exactly ONE header column; absent or ambiguous
+      // (duplicate after normalization) columns are rejected up-front.
       const filterIndexes: Array<{ idx: number; values: Set<string> }> = [];
       for (const filter of options.filters ?? []) {
         const name = normalizeHeaderName(filter.column);
-        const idx = normalizedHeader.indexOf(name);
-        if (idx < 0) {
+        const occurrences = normalizedHeader.reduce((acc, cell) => acc + (cell === name ? 1 : 0), 0);
+        if (occurrences === 0) {
           throw new Error(`Filtro inválido: a coluna "${name}" não existe no cabeçalho do membro ${memberName}.`);
         }
-        filterIndexes.push({ idx, values: new Set(filter.values) });
+        if (occurrences > 1) {
+          throw new Error(`Filtro ambíguo: a coluna "${name}" aparece ${occurrences} vezes no cabeçalho do membro ${memberName}.`);
+        }
+        filterIndexes.push({ idx: normalizedHeader.indexOf(name), values: new Set(filter.values) });
       }
 
       // Streaming aggregation: no records[] accumulation. Counters + counted maps.
@@ -943,9 +946,17 @@ export class TseOpenDataClient {
         TURNO: normalizedHeader.indexOf('NR_TURNO')
       };
 
-      // Duplicate detection with bounded memory: count + up to 3 examples, max keys.
+      // Duplicate detection REQUIRES the full composite key. If any component is
+      // absent or ambiguous, detection is DISABLED (never a silent partial key).
       const dupKeyCols = ['CD_MUNICIPIO', 'NR_ZONA', 'CD_CARGO', 'SQ_CANDIDATO'];
-      const dupKeyIndexes = dupKeyCols.map(col => normalizedHeader.indexOf(col)).filter(i => i >= 0);
+      const dupKeyIndexes: number[] = [];
+      const dupKeyMissing: string[] = [];
+      for (const col of dupKeyCols) {
+        const occurrences = normalizedHeader.reduce((acc, cell) => acc + (cell === col ? 1 : 0), 0);
+        if (occurrences === 1) dupKeyIndexes.push(normalizedHeader.indexOf(col));
+        else dupKeyMissing.push(col);
+      }
+      const dedupEnabled = dupKeyMissing.length === 0;
       const dupMap = new Map<string, { count: number; examples: string[][] }>();
       const MAX_DUP_KEYS = 10000;
       let duplicatesTruncated = false;
@@ -983,7 +994,7 @@ export class TseOpenDataClient {
 
           // Bounded duplicate tracking: existing keys keep counting even at the
           // cap; only NEW keys beyond the cap are dropped (and flagged).
-          if (dupKeyIndexes.length > 0) {
+          if (dedupEnabled) {
             const key = dupKeyIndexes.map(i => row[i] ?? '').join('|');
             const existing = dupMap.get(key);
             if (existing) {
@@ -1029,17 +1040,20 @@ export class TseOpenDataClient {
       };
 
       const duplicates: TseDuplicateFinding[] = [];
-      for (const [keyValue, { count, examples }] of dupMap) {
-        if (count > 1) {
-          duplicates.push({ key_columns: dupKeyCols, key_value: keyValue, count, example_records: examples });
+      if (dedupEnabled) {
+        for (const [keyValue, { count, examples }] of dupMap) {
+          if (count > 1) {
+            duplicates.push({ key_columns: dupKeyCols, key_value: keyValue, count, example_records: examples });
+          }
         }
       }
       const duplicateScan: TseDuplicateScanInfo = {
         key_columns: dupKeyCols,
-        tracked_keys: dupMap.size,
+        missing_columns: dupKeyMissing,
+        tracked_keys: dedupEnabled ? dupMap.size : 0,
         max_keys: MAX_DUP_KEYS,
         truncated: duplicatesTruncated,
-        complete: !duplicatesTruncated
+        complete: dedupEnabled && !duplicatesTruncated
       };
 
       // Status must be resolved BEFORE coverage, so a partial scan can never claim COMPLETE.
@@ -1052,6 +1066,9 @@ export class TseOpenDataClient {
       const gaps = detectGaps(dimensions, expectedArray);
 
       const limitations: string[] = [];
+      if (!dedupEnabled) {
+        limitations.push(`Deduplicação indisponível: colunas obrigatórias ausentes/ambíguas no cabeçalho [${dupKeyMissing.join(', ')}]; nenhuma chave parcial foi usada.`);
+      }
       if (duplicatesTruncated) {
         limitations.push(`Detecção de duplicatas truncada: limite de ${MAX_DUP_KEYS} chaves atingido; chaves novas deixaram de ser rastreadas (resultado NÃO exaustivo).`);
       }

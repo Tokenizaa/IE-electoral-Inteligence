@@ -57,6 +57,50 @@ export interface TseDuplicateFinding {
   example_records: string[][];
 }
 
+/**
+ * Completeness of the bounded-memory duplicate scan. Detection keeps at most
+ * `max_keys` distinct composite keys; once the cap is hit, NEW keys are no
+ * longer tracked and `truncated` becomes true. A truncated scan never claims to
+ * be exhaustive.
+ */
+export interface TseDuplicateScanInfo {
+  key_columns: string[];
+  tracked_keys: number;
+  max_keys: number;
+  truncated: boolean;
+  complete: boolean;
+}
+
+/** Record-level counters emitted by a member scan. */
+export interface TseScanCounters {
+  records_read: number;
+  records_accepted: number;
+  records_rejected: number;
+  records_invalid: number;
+  records_truncated: number;
+}
+
+/**
+ * Checks the mutually-consistent counter contract:
+ * - every counter is a non-negative integer;
+ * - `records_read` = accepted + rejected + invalid + truncated.
+ * Returns the list of violations (empty when consistent).
+ */
+export function counterInvariantViolations(counters: TseScanCounters): string[] {
+  const violations: string[] = [];
+  for (const key of ['records_read', 'records_accepted', 'records_rejected', 'records_invalid', 'records_truncated'] as const) {
+    const value = counters[key];
+    if (!Number.isInteger(value) || value < 0) {
+      violations.push(`${key} deve ser inteiro >= 0 (recebido ${String(value)}).`);
+    }
+  }
+  const classified = counters.records_accepted + counters.records_rejected + counters.records_invalid + counters.records_truncated;
+  if (classified !== counters.records_read) {
+    violations.push(`records_read (${counters.records_read}) != aceitos+rejeitados+inválidos+truncados (${classified}).`);
+  }
+  return violations;
+}
+
 export interface TseCoverageEntry {
   dimension: 'SOURCE' | 'UF' | 'YEAR' | 'OFFICE' | 'TURN';
   key: string;
@@ -81,13 +125,7 @@ export interface TseReconciliationSummary {
   encoding: string;
   num_columns: number;
   header_normalized: string[];
-  counters: {
-    records_read: number;
-    records_accepted: number;
-    records_rejected: number;
-    records_invalid: number;
-    records_truncated: number;
-  };
+  counters: TseScanCounters;
   scan_status: TseScanStatus;
   filters?: Array<{ column: string; values: string[] }>;
   dimensions: {
@@ -107,7 +145,13 @@ export interface TseReconciliationReport {
   };
   gaps: TseGapFinding[];
   duplicates: TseDuplicateFinding[];
+  /** Completeness of the bounded duplicate scan (may be truncated by the key cap). */
+  duplicate_scan: TseDuplicateScanInfo;
   coverage: TseCoverageEntry[];
+  /** Explicit, honest caveats about what this report does NOT prove. */
+  limitations: string[];
+  /** Populated when the scan aborted (parse error / oversized record); else null. */
+  scan_error: string | null;
 }
 
 /**

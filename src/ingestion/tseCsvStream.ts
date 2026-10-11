@@ -85,6 +85,16 @@ export class CsvParserError extends Error {
 /**
  * Streaming CSV record reader (RFC-4180). Yields complete records as string[].
  * Values are decoded from latin1 (TSE ISO-8859-1) then parsed; no trim applied.
+ *
+ * Limit contract (honest):
+ * - `maxRecordBytes` is enforced by `csv-parse` DURING parsing (`max_record_size`),
+ *   so an oversized record aborts before being fully materialized.
+ * - `maxFieldBytes` is NOT enforced before allocation (csv-parse has no per-field
+ *   limit). It is checked AFTER each record is materialized; within one record the
+ *   per-field ceiling cannot exceed `maxRecordBytes`.
+ * - `maxColumns` is checked after the record is emitted (`TOO_MANY_COLUMNS`).
+ * - `relax_column_count` is on: a divergent column count is EMITTED (caller
+ *   classifies it), while a syntax error (e.g. unterminated quote) still aborts.
  */
 export async function* readCsvLines(
   readable: Readable,

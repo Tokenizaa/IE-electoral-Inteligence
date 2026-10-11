@@ -19,9 +19,12 @@ import {
   type TseDimensionCount,
   type TseDuplicateFinding,
   type TseExpectedCount,
+  type TseScanCounters,
+  type TseDuplicateScanInfo,
   detectGaps,
   reconcileAgainstExpected,
-  determineScanStatus
+  determineScanStatus,
+  counterInvariantViolations
 } from './tseReconciliation.ts';
 import { DEFAULT_ZIP_LIMITS, listZipEntries, materializeZipSource, readZipMember, type TseZipEntryInfo, type TseZipLimits, type TseZipSource } from './tseZipReader.ts';
 import { selectZipCsvRows, type TseSelectOptions, type TseSelectSummary } from './tseSelectiveReader.ts';
@@ -904,14 +907,29 @@ export class TseOpenDataClient {
         throw new Error(`O membro ${memberName} não possui cabeçalho CSV legível.`);
       }
 
-      // Streaming aggregation: no records[] accumulation. Only counters and counted maps.
+      // Filters MUST resolve to a real header column; a declared-but-absent
+      // column is rejected up-front instead of being silently ignored.
+      const filterIndexes: Array<{ idx: number; values: Set<string> }> = [];
+      for (const filter of options.filters ?? []) {
+        const name = normalizeHeaderName(filter.column);
+        const idx = normalizedHeader.indexOf(name);
+        if (idx < 0) {
+          throw new Error(`Filtro inválido: a coluna "${name}" não existe no cabeçalho do membro ${memberName}.`);
+        }
+        filterIndexes.push({ idx, values: new Set(filter.values) });
+      }
+
+      // Streaming aggregation: no records[] accumulation. Counters + counted maps.
       let recordsRead = 0;
       let recordsAccepted = 0;
       let recordsRejected = 0;
       let recordsInvalid = 0;
-      const recordsTruncated = 0;
+      let recordsTruncated = 0;
       let fullyConsumed = false;
       let maxRowsReached = false;
+      let sizeLimitReached = false;
+      let scanFailed = false;
+      let scanError: string | null = null;
 
       const ufMap = new Map<string, number>();
       const anoMap = new Map<string, number>();
@@ -925,55 +943,83 @@ export class TseOpenDataClient {
         TURNO: normalizedHeader.indexOf('NR_TURNO')
       };
 
-      // Column-name → accepted-value set. A filter whose column is absent rejects nothing.
-      const filterIndexes: Array<{ idx: number; values: Set<string> }> = [];
-      for (const filter of options.filters ?? []) {
-        const idx = normalizedHeader.indexOf(normalizeHeaderName(filter.column));
-        if (idx >= 0) filterIndexes.push({ idx, values: new Set(filter.values) });
-      }
-
       // Duplicate detection with bounded memory: count + up to 3 examples, max keys.
       const dupKeyCols = ['CD_MUNICIPIO', 'NR_ZONA', 'CD_CARGO', 'SQ_CANDIDATO'];
       const dupKeyIndexes = dupKeyCols.map(col => normalizedHeader.indexOf(col)).filter(i => i >= 0);
       const dupMap = new Map<string, { count: number; examples: string[][] }>();
       const MAX_DUP_KEYS = 10000;
+      let duplicatesTruncated = false;
 
-      for await (const row of readCsvLines(memberStream.stream, { delimiter })) {
-        recordsRead++;
-        // Column count diverging from the header is classified inválido.
-        if (row.length !== normalizedHeader.length) {
-          recordsInvalid++;
-          continue;
-        }
-        // Filters run before acceptance: excluded rows are classified rejected.
-        let matches = true;
-        for (const { idx, values } of filterIndexes) {
-          if (!values.has(row[idx])) { matches = false; break; }
-        }
-        if (!matches) {
-          recordsRejected++;
-          continue;
-        }
-        if (options.maxRows !== undefined && recordsAccepted >= options.maxRows) {
-          maxRowsReached = true;
-          break;
-        }
-        recordsAccepted++;
-        if (dimIdx.UF >= 0) ufMap.set(row[dimIdx.UF], (ufMap.get(row[dimIdx.UF]) ?? 0) + 1);
-        if (dimIdx.ANO >= 0) anoMap.set(row[dimIdx.ANO], (anoMap.get(row[dimIdx.ANO]) ?? 0) + 1);
-        if (dimIdx.CARGO >= 0) cargoMap.set(row[dimIdx.CARGO], (cargoMap.get(row[dimIdx.CARGO]) ?? 0) + 1);
-        if (dimIdx.TURNO >= 0) turnoMap.set(row[dimIdx.TURNO], (turnoMap.get(row[dimIdx.TURNO]) ?? 0) + 1);
+      try {
+        for await (const row of readCsvLines(memberStream.stream, { delimiter })) {
+          recordsRead++;
+          // Column count diverging from the header is classified inválido.
+          if (row.length !== normalizedHeader.length) {
+            recordsInvalid++;
+            continue;
+          }
+          // Filters run before acceptance: excluded rows are classified rejected.
+          let matches = true;
+          for (const { idx, values } of filterIndexes) {
+            const cell = idx < row.length ? row[idx] : undefined;
+            if (cell === undefined || !values.has(cell)) { matches = false; break; }
+          }
+          if (!matches) {
+            recordsRejected++;
+            continue;
+          }
+          // maxRows: this record was read but is deliberately NOT processed; it is
+          // classified as truncated so the counter invariant still holds.
+          if (options.maxRows !== undefined && recordsAccepted >= options.maxRows) {
+            maxRowsReached = true;
+            recordsTruncated++;
+            break;
+          }
+          recordsAccepted++;
+          if (dimIdx.UF >= 0) ufMap.set(row[dimIdx.UF], (ufMap.get(row[dimIdx.UF]) ?? 0) + 1);
+          if (dimIdx.ANO >= 0) anoMap.set(row[dimIdx.ANO], (anoMap.get(row[dimIdx.ANO]) ?? 0) + 1);
+          if (dimIdx.CARGO >= 0) cargoMap.set(row[dimIdx.CARGO], (cargoMap.get(row[dimIdx.CARGO]) ?? 0) + 1);
+          if (dimIdx.TURNO >= 0) turnoMap.set(row[dimIdx.TURNO], (turnoMap.get(row[dimIdx.TURNO]) ?? 0) + 1);
 
-        if (dupKeyIndexes.length > 0 && dupMap.size < MAX_DUP_KEYS) {
-          const key = dupKeyIndexes.map(i => row[i] ?? '').join('|');
-          const entry = dupMap.get(key) ?? { count: 0, examples: [] };
-          entry.count++;
-          if (entry.examples.length < 3) entry.examples.push([...row]);
-          dupMap.set(key, entry);
+          // Bounded duplicate tracking: existing keys keep counting even at the
+          // cap; only NEW keys beyond the cap are dropped (and flagged).
+          if (dupKeyIndexes.length > 0) {
+            const key = dupKeyIndexes.map(i => row[i] ?? '').join('|');
+            const existing = dupMap.get(key);
+            if (existing) {
+              existing.count++;
+              if (existing.examples.length < 3) existing.examples.push([...row]);
+            } else if (dupMap.size < MAX_DUP_KEYS) {
+              dupMap.set(key, { count: 1, examples: [[...row]] });
+            } else {
+              duplicatesTruncated = true;
+            }
+          }
+        }
+        fullyConsumed = !maxRowsReached;
+      } catch (err) {
+        // Parsing/stream failure: STOP. Recovery/continuation is NOT safe (the
+        // parser stream is in an undefined state), so the result is reported as
+        // PARTIAL and never as COMPLETE.
+        scanError = err instanceof Error ? err.message : String(err);
+        if ((err as { code?: string })?.code === 'RECORD_TOO_LARGE') {
+          sizeLimitReached = true;
+        } else {
+          scanFailed = true;
         }
       }
-      // Only a loop that ended by exhausting the stream (not by maxRows) is fully consumed.
-      fullyConsumed = !maxRowsReached;
+
+      const counters: TseScanCounters = {
+        records_read: recordsRead,
+        records_accepted: recordsAccepted,
+        records_rejected: recordsRejected,
+        records_invalid: recordsInvalid,
+        records_truncated: recordsTruncated
+      };
+      const violations = counterInvariantViolations(counters);
+      if (violations.length > 0) {
+        throw new Error(`Invariante de contadores violada no scan de ${memberName}: ${violations.join(' ')}`);
+      }
 
       const dimensions = {
         UF: Array.from(ufMap.entries()).map(([key, count]) => ({ UF: key, count } as TseDimensionCount)),
@@ -988,15 +1034,33 @@ export class TseOpenDataClient {
           duplicates.push({ key_columns: dupKeyCols, key_value: keyValue, count, example_records: examples });
         }
       }
+      const duplicateScan: TseDuplicateScanInfo = {
+        key_columns: dupKeyCols,
+        tracked_keys: dupMap.size,
+        max_keys: MAX_DUP_KEYS,
+        truncated: duplicatesTruncated,
+        complete: !duplicatesTruncated
+      };
 
       // Status must be resolved BEFORE coverage, so a partial scan can never claim COMPLETE.
-      const scanStatus = determineScanStatus({ fullyConsumed, maxRowsReached, cancelled: false, error: false, sizeLimitReached: false });
+      const scanStatus = determineScanStatus({ fullyConsumed, maxRowsReached, cancelled: false, error: scanFailed, sizeLimitReached });
 
       const expected = options.expected ?? null;
       const coverage = reconcileAgainstExpected(dimensions, expected, scanStatus);
 
       const expectedArray: TseExpectedCount[] = expected?.per_dimension ? Object.values(expected.per_dimension) : [];
       const gaps = detectGaps(dimensions, expectedArray);
+
+      const limitations: string[] = [];
+      if (duplicatesTruncated) {
+        limitations.push(`Detecção de duplicatas truncada: limite de ${MAX_DUP_KEYS} chaves atingido; chaves novas deixaram de ser rastreadas (resultado NÃO exaustivo).`);
+      }
+      if (scanStatus !== 'COMPLETE') {
+        limitations.push(`Scan não completo (${scanStatus}): a cobertura nunca é marcada COMPLETE.`);
+      }
+      if (scanError) {
+        limitations.push(`Falha de parsing interrompeu o scan: ${scanError}. Continuação não é segura; as contagens refletem apenas o trecho lido.`);
+      }
 
       const summary: TseReconciliationSummary = {
         source: {
@@ -1012,13 +1076,7 @@ export class TseOpenDataClient {
         encoding: 'iso-8859-1',
         num_columns: normalizedHeader.length,
         header_normalized: normalizedHeader,
-        counters: {
-          records_read: recordsRead,
-          records_accepted: recordsAccepted,
-          records_rejected: recordsRejected,
-          records_invalid: recordsInvalid,
-          records_truncated: recordsTruncated
-        },
+        counters,
         scan_status: scanStatus,
         filters: options.filters,
         dimensions
@@ -1029,7 +1087,10 @@ export class TseOpenDataClient {
         expected: expected ? { source_ref: expected.source_ref, method: expected.method, per_dimension: expected.per_dimension } : { source_ref: '', method: 'NONE', per_dimension: {} },
         gaps,
         duplicates,
-        coverage
+        duplicate_scan: duplicateScan,
+        coverage,
+        limitations,
+        scan_error: scanError
       };
     } finally {
       if (spool) await spool.cleanup();

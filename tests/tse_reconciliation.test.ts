@@ -20,6 +20,7 @@ import {
   detectDivergences,
   reconcileAgainstExpected,
   determineScanStatus,
+  counterInvariantViolations,
   type TseExpectedCount,
   type TseCoverageEntry
 } from '../src/ingestion/tseReconciliation.ts';
@@ -292,7 +293,11 @@ async function run() {
         '2022;AC;6;1;1001;1;100;50\n',
         'latin1'
       );
-      const zipBytes = buildZip([{ name: memberName, data: fixture }]);
+      const malformed = Buffer.from('ANO_ELEICAO;SG_UF\n2022;AC\n2022;"AC\n', 'latin1');
+      const zipBytes = buildZip([
+        { name: memberName, data: fixture },
+        { name: 'bad.csv', data: malformed }
+      ]);
       const zipPath = path.join(yearDir, `${resourceId}-scan.zip`);
       await writeFile(zipPath, zipBytes);
       const sha256 = createHash('sha256').update(zipBytes).digest('hex');
@@ -360,8 +365,41 @@ async function run() {
       });
       assert.equal(partial.summary.scan_status, 'PARTIAL_MAX_ROWS');
       assert.equal(partial.summary.counters.records_accepted, 1);
+      assert.equal(partial.summary.counters.records_truncated, 1, 'maxRows boundary record classified truncated');
       assert.equal(partial.coverage.find(c => c.dimension === 'UF' && c.key === 'AC')!.status, 'PARTIAL', 'partial scan cannot yield COMPLETE coverage');
       console.log('  OK partial gate');
+
+      // 17d) counter invariant holds for every scan (read = accepted+rejected+invalid+truncated).
+      for (const [label, report] of [['full', full], ['filtered', filtered], ['partial', partial]] as const) {
+        assert.deepEqual(counterInvariantViolations(report.summary.counters), [], `counter invariant holds (${label})`);
+      }
+      console.log('  OK invariants');
+
+      // 17e) duplicate scan report is explicit; bounded scan is complete here.
+      assert.equal(full.duplicate_scan.complete, true);
+      assert.equal(full.duplicate_scan.truncated, false);
+      assert.equal(full.duplicate_scan.tracked_keys, 3, '3 distinct composite keys tracked');
+      console.log('  OK duplicate-scan completeness');
+
+      // 17f) filter on an ABSENT column is rejected, never silently ignored.
+      await assert.rejects(
+        () => client.scanStoredZipMember(resourceId, 2022, memberName, { filters: [{ column: 'NO_SUCH_COLUMN', values: ['x'] }] }),
+        /Filtro inválido/
+      );
+      console.log('  OK filter-reject');
+
+      // 17g) CSV syntax error (unterminated quote) -> PARTIAL_ERROR, never COMPLETE.
+      const bad = await client.scanStoredZipMember(resourceId, 2022, 'bad.csv', {
+        expected: {
+          source_ref: 'fixture',
+          method: 'FLAT_FILE_LINE_COUNT',
+          per_dimension: { 'UF:AC': { UF: 'AC', expected_count: 1, source_ref: 'fixture', method: 'FLAT_FILE_LINE_COUNT' } }
+        }
+      });
+      assert.equal(bad.summary.scan_status, 'PARTIAL_ERROR', 'syntax error -> PARTIAL_ERROR');
+      assert.ok(bad.scan_error, 'scan_error populated');
+      assert.ok(bad.coverage.every(c => c.status !== 'COMPLETE'), 'partial scan cannot yield COMPLETE coverage');
+      console.log('  OK syntax-error partial');
     } finally {
       await rm(scanRoot, { recursive: true, force: true });
     }

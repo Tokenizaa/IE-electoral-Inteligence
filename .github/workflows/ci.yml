@@ -47,3 +47,6 @@ jobs:
 
       - name: TSE scan and reconciliation safeguards
         run: bun run test:tse-reconciliation
+
+      - name: Ingestion chain assessment safeguards
+        run: bun run test:ingestion-audit

@@ -1,0 +1,690 @@
+{
+  "generated_at": "2026-10-11T03:42:58.429Z",
+  "year": 2022,
+  "scan_mode": "bounded:2000",
+  "member_filter": null,
+  "policy": {
+    "note": "Ingestão analítica BLOQUEADA até reconciliação com denominadores oficiais do TSE e evidência suficiente.",
+    "authorization_rule": "AUTHORIZED somente quando TODOS os membros passam: traceabilidade, layout oficialmente validado, scan COMPLETE, dedup completa, invariante de contadores e reconciliação de cobertura com tolerância zero."
+  },
+  "summary": {
+    "artifacts": 1,
+    "members": 29,
+    "proven_complete": 0,
+    "partial": 29,
+    "missing_official_evidence": 0,
+    "authorized_members": 0
+  },
+  "chain_authorization": {
+    "authorized": false,
+    "blocker_counts": {
+      "LAYOUT_NOT_OFFICIALLY_VALIDATED": 28,
+      "SCAN_NOT_COMPLETE": 29,
+      "NO_OFFICIAL_DENOMINATOR": 28,
+      "RECONCILIATION_NOT_ZERO_TOLERANCE": 28
+    },
+    "blockers": [
+      "LAYOUT_NOT_OFFICIALLY_VALIDATED",
+      "SCAN_NOT_COMPLETE",
+      "NO_OFFICIAL_DENOMINATOR",
+      "RECONCILIATION_NOT_ZERO_TOLERANCE"
+    ]
+  },
+  "artifacts": [
+    {
+      "resource_id": "40fdcf49-256a-4c81-87cf-711545bd1528",
+      "year": 2022,
+      "dataset_title": "Resultados - 2022",
+      "file_name": "40fdcf49-256a-4c81-87cf-711545bd1528-2026-10-09T22-27-13-467Z.zip",
+      "size_bytes": 580941971,
+      "sha256_manifest": "cd44bcc2260c3b7e53c254aa9b03ff989ad7511737d5df9a2b99c78e45eb00ef",
+      "sha256_file": "cd44bcc2260c3b7e53c254aa9b03ff989ad7511737d5df9a2b99c78e45eb00ef",
+      "validation_status": "DOWNLOADED_HASHED_LAYOUT_REVIEW_REQUIRED",
+      "traceability": {
+        "status": "VERIFIED_LOCAL_HASH",
+        "verified": true,
+        "reasons": [
+          "Arquivo confere com o manifesto; origem oficial; ano confere. Hash local ainda NÃO comparado à publicação oficial.",
+          "validation_status=DOWNLOADED_HASHED_LAYOUT_REVIEW_REQUIRED"
+        ]
+      },
+      "members": [
+        {
+          "member": "votacao_candidato_munzona_2022_AL.csv",
+          "class": "PARTIAL",
+          "authorized": false,
+          "blockers": [
+            "LAYOUT_NOT_OFFICIALLY_VALIDATED",
+            "SCAN_NOT_COMPLETE",
+            "NO_OFFICIAL_DENOMINATOR",
+            "RECONCILIATION_NOT_ZERO_TOLERANCE"
+          ],
+          "scan_status": "PARTIAL_MAX_ROWS",
+          "counters": {
+            "records_read": 2001,
+            "records_accepted": 2000,
+            "records_rejected": 0,
+            "records_invalid": 0,
+            "records_truncated": 1
+          },
+          "duplicate_keys_tracked": 1922,
+          "duplicate_scan_complete": true,
+          "scan_error": null
+        },
+        {
+          "member": "votacao_candidato_munzona_2022_CE.csv",
+          "class": "PARTIAL",
+          "authorized": false,
+          "blockers": [
+            "LAYOUT_NOT_OFFICIALLY_VALIDATED",
+            "SCAN_NOT_COMPLETE",
+            "NO_OFFICIAL_DENOMINATOR",
+            "RECONCILIATION_NOT_ZERO_TOLERANCE"
+          ],
+          "scan_status": "PARTIAL_MAX_ROWS",
+          "counters": {
+            "records_read": 2001,
+            "records_accepted": 2000,
+            "records_rejected": 0,
+            "records_invalid": 0,
+            "records_truncated": 1
+          },
+          "duplicate_keys_tracked": 2000,
+          "duplicate_scan_complete": true,
+          "scan_error": null
+        },
+        {
+          "member": "votacao_candidato_munzona_2022_AP.csv",
+          "class": "PARTIAL",
+          "authorized": false,
+          "blockers": [
+            "LAYOUT_NOT_OFFICIALLY_VALIDATED",
+            "SCAN_NOT_COMPLETE",
+            "NO_OFFICIAL_DENOMINATOR",
+            "RECONCILIATION_NOT_ZERO_TOLERANCE"
+          ],
+          "scan_status": "PARTIAL_MAX_ROWS",
+          "counters": {
+            "records_read": 2001,
+            "records_accepted": 2000,
+            "records_rejected": 0,
+            "records_invalid": 0,
+            "records_truncated": 1
+          },
+          "duplicate_keys_tracked": 2000,
+          "duplicate_scan_complete": true,
+          "scan_error": null
+        },
+        {
+          "member": "votacao_candidato_munzona_2022_DF.csv",
+          "class": "PARTIAL",
+          "authorized": false,
+          "blockers": [
+            "LAYOUT_NOT_OFFICIALLY_VALIDATED",
+            "SCAN_NOT_COMPLETE",
+            "NO_OFFICIAL_DENOMINATOR",
+            "RECONCILIATION_NOT_ZERO_TOLERANCE"
+          ],
+          "scan_status": "PARTIAL_MAX_ROWS",
+          "counters": {
+            "records_read": 2001,
+            "records_accepted": 2000,
+            "records_rejected": 0,
+            "records_invalid": 0,
+            "records_truncated": 1
+          },
+          "duplicate_keys_tracked": 2000,
+          "duplicate_scan_complete": true,
+          "scan_error": null
+        },
+        {
+          "member": "votacao_candidato_munzona_2022_AM.csv",
+          "class": "PARTIAL",
+          "authorized": false,
+          "blockers": [
+            "LAYOUT_NOT_OFFICIALLY_VALIDATED",
+            "SCAN_NOT_COMPLETE",
+            "NO_OFFICIAL_DENOMINATOR",
+            "RECONCILIATION_NOT_ZERO_TOLERANCE"
+          ],
+          "scan_status": "PARTIAL_MAX_ROWS",
+          "counters": {
+            "records_read": 2001,
+            "records_accepted": 2000,
+            "records_rejected": 0,
+            "records_invalid": 0,
+            "records_truncated": 1
+          },
+          "duplicate_keys_tracked": 1948,
+          "duplicate_scan_complete": true,
+          "scan_error": null
+        },
+        {
+          "member": "votacao_candidato_munzona_2022_AC.csv",
+          "class": "PARTIAL",
+          "authorized": false,
+          "blockers": [
+            "LAYOUT_NOT_OFFICIALLY_VALIDATED",
+            "SCAN_NOT_COMPLETE",
+            "NO_OFFICIAL_DENOMINATOR",
+            "RECONCILIATION_NOT_ZERO_TOLERANCE"
+          ],
+          "scan_status": "PARTIAL_MAX_ROWS",
+          "counters": {
+            "records_read": 2001,
+            "records_accepted": 2000,
+            "records_rejected": 0,
+            "records_invalid": 0,
+            "records_truncated": 1
+          },
+          "duplicate_keys_tracked": 2000,
+          "duplicate_scan_complete": true,
+          "scan_error": null
+        },
+        {
+          "member": "votacao_candidato_munzona_2022_BA.csv",
+          "class": "PARTIAL",
+          "authorized": false,
+          "blockers": [
+            "LAYOUT_NOT_OFFICIALLY_VALIDATED",
+            "SCAN_NOT_COMPLETE",
+            "NO_OFFICIAL_DENOMINATOR",
+            "RECONCILIATION_NOT_ZERO_TOLERANCE"
+          ],
+          "scan_status": "PARTIAL_MAX_ROWS",
+          "counters": {
+            "records_read": 2001,
+            "records_accepted": 2000,
+            "records_rejected": 0,
+            "records_invalid": 0,
+            "records_truncated": 1
+          },
+          "duplicate_keys_tracked": 2000,
+          "duplicate_scan_complete": true,
+          "scan_error": null
+        },
+        {
+          "member": "votacao_candidato_munzona_2022_ES.csv",
+          "class": "PARTIAL",
+          "authorized": false,
+          "blockers": [
+            "LAYOUT_NOT_OFFICIALLY_VALIDATED",
+            "SCAN_NOT_COMPLETE",
+            "NO_OFFICIAL_DENOMINATOR",
+            "RECONCILIATION_NOT_ZERO_TOLERANCE"
+          ],
+          "scan_status": "PARTIAL_MAX_ROWS",
+          "counters": {
+            "records_read": 2001,
+            "records_accepted": 2000,
+            "records_rejected": 0,
+            "records_invalid": 0,
+            "records_truncated": 1
+          },
+          "duplicate_keys_tracked": 1924,
+          "duplicate_scan_complete": true,
+          "scan_error": null
+        },
+        {
+          "member": "votacao_candidato_munzona_2022_GO.csv",
+          "class": "PARTIAL",
+          "authorized": false,
+          "blockers": [
+            "LAYOUT_NOT_OFFICIALLY_VALIDATED",
+            "SCAN_NOT_COMPLETE",
+            "NO_OFFICIAL_DENOMINATOR",
+            "RECONCILIATION_NOT_ZERO_TOLERANCE"
+          ],
+          "scan_status": "PARTIAL_MAX_ROWS",
+          "counters": {
+            "records_read": 2001,
+            "records_accepted": 2000,
+            "records_rejected": 0,
+            "records_invalid": 0,
+            "records_truncated": 1
+          },
+          "duplicate_keys_tracked": 2000,
+          "duplicate_scan_complete": true,
+          "scan_error": null
+        },
+        {
+          "member": "votacao_candidato_munzona_2022_MA.csv",
+          "class": "PARTIAL",
+          "authorized": false,
+          "blockers": [
+            "LAYOUT_NOT_OFFICIALLY_VALIDATED",
+            "SCAN_NOT_COMPLETE",
+            "NO_OFFICIAL_DENOMINATOR",
+            "RECONCILIATION_NOT_ZERO_TOLERANCE"
+          ],
+          "scan_status": "PARTIAL_MAX_ROWS",
+          "counters": {
+            "records_read": 2001,
+            "records_accepted": 2000,
+            "records_rejected": 0,
+            "records_invalid": 0,
+            "records_truncated": 1
+          },
+          "duplicate_keys_tracked": 2000,
+          "duplicate_scan_complete": true,
+          "scan_error": null
+        },
+        {
+          "member": "votacao_candidato_munzona_2022_MG.csv",
+          "class": "PARTIAL",
+          "authorized": false,
+          "blockers": [
+            "LAYOUT_NOT_OFFICIALLY_VALIDATED",
+            "SCAN_NOT_COMPLETE",
+            "NO_OFFICIAL_DENOMINATOR",
+            "RECONCILIATION_NOT_ZERO_TOLERANCE"
+          ],
+          "scan_status": "PARTIAL_MAX_ROWS",
+          "counters": {
+            "records_read": 2001,
+            "records_accepted": 2000,
+            "records_rejected": 0,
+            "records_invalid": 0,
+            "records_truncated": 1
+          },
+          "duplicate_keys_tracked": 2000,
+          "duplicate_scan_complete": true,
+          "scan_error": null
+        },
+        {
+          "member": "votacao_candidato_munzona_2022_MS.csv",
+          "class": "PARTIAL",
+          "authorized": false,
+          "blockers": [
+            "LAYOUT_NOT_OFFICIALLY_VALIDATED",
+            "SCAN_NOT_COMPLETE",
+            "NO_OFFICIAL_DENOMINATOR",
+            "RECONCILIATION_NOT_ZERO_TOLERANCE"
+          ],
+          "scan_status": "PARTIAL_MAX_ROWS",
+          "counters": {
+            "records_read": 2001,
+            "records_accepted": 2000,
+            "records_rejected": 0,
+            "records_invalid": 0,
+            "records_truncated": 1
+          },
+          "duplicate_keys_tracked": 1952,
+          "duplicate_scan_complete": true,
+          "scan_error": null
+        },
+        {
+          "member": "votacao_candidato_munzona_2022_MT.csv",
+          "class": "PARTIAL",
+          "authorized": false,
+          "blockers": [
+            "LAYOUT_NOT_OFFICIALLY_VALIDATED",
+            "SCAN_NOT_COMPLETE",
+            "NO_OFFICIAL_DENOMINATOR",
+            "RECONCILIATION_NOT_ZERO_TOLERANCE"
+          ],
+          "scan_status": "PARTIAL_MAX_ROWS",
+          "counters": {
+            "records_read": 2001,
+            "records_accepted": 2000,
+            "records_rejected": 0,
+            "records_invalid": 0,
+            "records_truncated": 1
+          },
+          "duplicate_keys_tracked": 2000,
+          "duplicate_scan_complete": true,
+          "scan_error": null
+        },
+        {
+          "member": "votacao_candidato_munzona_2022_PA.csv",
+          "class": "PARTIAL",
+          "authorized": false,
+          "blockers": [
+            "LAYOUT_NOT_OFFICIALLY_VALIDATED",
+            "SCAN_NOT_COMPLETE",
+            "NO_OFFICIAL_DENOMINATOR",
+            "RECONCILIATION_NOT_ZERO_TOLERANCE"
+          ],
+          "scan_status": "PARTIAL_MAX_ROWS",
+          "counters": {
+            "records_read": 2001,
+            "records_accepted": 2000,
+            "records_rejected": 0,
+            "records_invalid": 0,
+            "records_truncated": 1
+          },
+          "duplicate_keys_tracked": 2000,
+          "duplicate_scan_complete": true,
+          "scan_error": null
+        },
+        {
+          "member": "votacao_candidato_munzona_2022_BR.csv",
+          "class": "PARTIAL",
+          "authorized": false,
+          "blockers": [
+            "LAYOUT_NOT_OFFICIALLY_VALIDATED",
+            "SCAN_NOT_COMPLETE",
+            "NO_OFFICIAL_DENOMINATOR",
+            "RECONCILIATION_NOT_ZERO_TOLERANCE"
+          ],
+          "scan_status": "PARTIAL_MAX_ROWS",
+          "counters": {
+            "records_read": 2001,
+            "records_accepted": 2000,
+            "records_rejected": 0,
+            "records_invalid": 0,
+            "records_truncated": 1
+          },
+          "duplicate_keys_tracked": 2000,
+          "duplicate_scan_complete": true,
+          "scan_error": null
+        },
+        {
+          "member": "votacao_candidato_munzona_2022_BRASIL.csv",
+          "class": "PARTIAL",
+          "authorized": false,
+          "blockers": [
+            "SCAN_NOT_COMPLETE"
+          ],
+          "scan_status": "PARTIAL_ERROR",
+          "counters": {
+            "records_read": 0,
+            "records_accepted": 0,
+            "records_rejected": 0,
+            "records_invalid": 0,
+            "records_truncated": 0
+          },
+          "duplicate_keys_tracked": 0,
+          "duplicate_scan_complete": false,
+          "scan_error": "O membro \"votacao_candidato_munzona_2022_BRASIL.csv\" descompacta 4298078527 bytes, excedendo o limite de 3221225472 bytes por membro."
+        },
+        {
+          "member": "votacao_candidato_munzona_2022_PB.csv",
+          "class": "PARTIAL",
+          "authorized": false,
+          "blockers": [
+            "LAYOUT_NOT_OFFICIALLY_VALIDATED",
+            "SCAN_NOT_COMPLETE",
+            "NO_OFFICIAL_DENOMINATOR",
+            "RECONCILIATION_NOT_ZERO_TOLERANCE"
+          ],
+          "scan_status": "PARTIAL_MAX_ROWS",
+          "counters": {
+            "records_read": 2001,
+            "records_accepted": 2000,
+            "records_rejected": 0,
+            "records_invalid": 0,
+            "records_truncated": 1
+          },
+          "duplicate_keys_tracked": 2000,
+          "duplicate_scan_complete": true,
+          "scan_error": null
+        },
+        {
+          "member": "votacao_candidato_munzona_2022_PE.csv",
+          "class": "PARTIAL",
+          "authorized": false,
+          "blockers": [
+            "LAYOUT_NOT_OFFICIALLY_VALIDATED",
+            "SCAN_NOT_COMPLETE",
+            "NO_OFFICIAL_DENOMINATOR",
+            "RECONCILIATION_NOT_ZERO_TOLERANCE"
+          ],
+          "scan_status": "PARTIAL_MAX_ROWS",
+          "counters": {
+            "records_read": 2001,
+            "records_accepted": 2000,
+            "records_rejected": 0,
+            "records_invalid": 0,
+            "records_truncated": 1
+          },
+          "duplicate_keys_tracked": 2000,
+          "duplicate_scan_complete": true,
+          "scan_error": null
+        },
+        {
+          "member": "votacao_candidato_munzona_2022_PI.csv",
+          "class": "PARTIAL",
+          "authorized": false,
+          "blockers": [
+            "LAYOUT_NOT_OFFICIALLY_VALIDATED",
+            "SCAN_NOT_COMPLETE",
+            "NO_OFFICIAL_DENOMINATOR",
+            "RECONCILIATION_NOT_ZERO_TOLERANCE"
+          ],
+          "scan_status": "PARTIAL_MAX_ROWS",
+          "counters": {
+            "records_read": 2001,
+            "records_accepted": 2000,
+            "records_rejected": 0,
+            "records_invalid": 0,
+            "records_truncated": 1
+          },
+          "duplicate_keys_tracked": 2000,
+          "duplicate_scan_complete": true,
+          "scan_error": null
+        },
+        {
+          "member": "votacao_candidato_munzona_2022_PR.csv",
+          "class": "PARTIAL",
+          "authorized": false,
+          "blockers": [
+            "LAYOUT_NOT_OFFICIALLY_VALIDATED",
+            "SCAN_NOT_COMPLETE",
+            "NO_OFFICIAL_DENOMINATOR",
+            "RECONCILIATION_NOT_ZERO_TOLERANCE"
+          ],
+          "scan_status": "PARTIAL_MAX_ROWS",
+          "counters": {
+            "records_read": 2001,
+            "records_accepted": 2000,
+            "records_rejected": 0,
+            "records_invalid": 0,
+            "records_truncated": 1
+          },
+          "duplicate_keys_tracked": 2000,
+          "duplicate_scan_complete": true,
+          "scan_error": null
+        },
+        {
+          "member": "votacao_candidato_munzona_2022_RJ.csv",
+          "class": "PARTIAL",
+          "authorized": false,
+          "blockers": [
+            "LAYOUT_NOT_OFFICIALLY_VALIDATED",
+            "SCAN_NOT_COMPLETE",
+            "NO_OFFICIAL_DENOMINATOR",
+            "RECONCILIATION_NOT_ZERO_TOLERANCE"
+          ],
+          "scan_status": "PARTIAL_MAX_ROWS",
+          "counters": {
+            "records_read": 2001,
+            "records_accepted": 2000,
+            "records_rejected": 0,
+            "records_invalid": 0,
+            "records_truncated": 1
+          },
+          "duplicate_keys_tracked": 2000,
+          "duplicate_scan_complete": true,
+          "scan_error": null
+        },
+        {
+          "member": "votacao_candidato_munzona_2022_RN.csv",
+          "class": "PARTIAL",
+          "authorized": false,
+          "blockers": [
+            "LAYOUT_NOT_OFFICIALLY_VALIDATED",
+            "SCAN_NOT_COMPLETE",
+            "NO_OFFICIAL_DENOMINATOR",
+            "RECONCILIATION_NOT_ZERO_TOLERANCE"
+          ],
+          "scan_status": "PARTIAL_MAX_ROWS",
+          "counters": {
+            "records_read": 2001,
+            "records_accepted": 2000,
+            "records_rejected": 0,
+            "records_invalid": 0,
+            "records_truncated": 1
+          },
+          "duplicate_keys_tracked": 2000,
+          "duplicate_scan_complete": true,
+          "scan_error": null
+        },
+        {
+          "member": "votacao_candidato_munzona_2022_RO.csv",
+          "class": "PARTIAL",
+          "authorized": false,
+          "blockers": [
+            "LAYOUT_NOT_OFFICIALLY_VALIDATED",
+            "SCAN_NOT_COMPLETE",
+            "NO_OFFICIAL_DENOMINATOR",
+            "RECONCILIATION_NOT_ZERO_TOLERANCE"
+          ],
+          "scan_status": "PARTIAL_MAX_ROWS",
+          "counters": {
+            "records_read": 2001,
+            "records_accepted": 2000,
+            "records_rejected": 0,
+            "records_invalid": 0,
+            "records_truncated": 1
+          },
+          "duplicate_keys_tracked": 1944,
+          "duplicate_scan_complete": true,
+          "scan_error": null
+        },
+        {
+          "member": "votacao_candidato_munzona_2022_RR.csv",
+          "class": "PARTIAL",
+          "authorized": false,
+          "blockers": [
+            "LAYOUT_NOT_OFFICIALLY_VALIDATED",
+            "SCAN_NOT_COMPLETE",
+            "NO_OFFICIAL_DENOMINATOR",
+            "RECONCILIATION_NOT_ZERO_TOLERANCE"
+          ],
+          "scan_status": "PARTIAL_MAX_ROWS",
+          "counters": {
+            "records_read": 2001,
+            "records_accepted": 2000,
+            "records_rejected": 0,
+            "records_invalid": 0,
+            "records_truncated": 1
+          },
+          "duplicate_keys_tracked": 2000,
+          "duplicate_scan_complete": true,
+          "scan_error": null
+        },
+        {
+          "member": "votacao_candidato_munzona_2022_RS.csv",
+          "class": "PARTIAL",
+          "authorized": false,
+          "blockers": [
+            "LAYOUT_NOT_OFFICIALLY_VALIDATED",
+            "SCAN_NOT_COMPLETE",
+            "NO_OFFICIAL_DENOMINATOR",
+            "RECONCILIATION_NOT_ZERO_TOLERANCE"
+          ],
+          "scan_status": "PARTIAL_MAX_ROWS",
+          "counters": {
+            "records_read": 2001,
+            "records_accepted": 2000,
+            "records_rejected": 0,
+            "records_invalid": 0,
+            "records_truncated": 1
+          },
+          "duplicate_keys_tracked": 2000,
+          "duplicate_scan_complete": true,
+          "scan_error": null
+        },
+        {
+          "member": "votacao_candidato_munzona_2022_SC.csv",
+          "class": "PARTIAL",
+          "authorized": false,
+          "blockers": [
+            "LAYOUT_NOT_OFFICIALLY_VALIDATED",
+            "SCAN_NOT_COMPLETE",
+            "NO_OFFICIAL_DENOMINATOR",
+            "RECONCILIATION_NOT_ZERO_TOLERANCE"
+          ],
+          "scan_status": "PARTIAL_MAX_ROWS",
+          "counters": {
+            "records_read": 2001,
+            "records_accepted": 2000,
+            "records_rejected": 0,
+            "records_invalid": 0,
+            "records_truncated": 1
+          },
+          "duplicate_keys_tracked": 2000,
+          "duplicate_scan_complete": true,
+          "scan_error": null
+        },
+        {
+          "member": "votacao_candidato_munzona_2022_SE.csv",
+          "class": "PARTIAL",
+          "authorized": false,
+          "blockers": [
+            "LAYOUT_NOT_OFFICIALLY_VALIDATED",
+            "SCAN_NOT_COMPLETE",
+            "NO_OFFICIAL_DENOMINATOR",
+            "RECONCILIATION_NOT_ZERO_TOLERANCE"
+          ],
+          "scan_status": "PARTIAL_MAX_ROWS",
+          "counters": {
+            "records_read": 2001,
+            "records_accepted": 2000,
+            "records_rejected": 0,
+            "records_invalid": 0,
+            "records_truncated": 1
+          },
+          "duplicate_keys_tracked": 1923,
+          "duplicate_scan_complete": true,
+          "scan_error": null
+        },
+        {
+          "member": "votacao_candidato_munzona_2022_SP.csv",
+          "class": "PARTIAL",
+          "authorized": false,
+          "blockers": [
+            "LAYOUT_NOT_OFFICIALLY_VALIDATED",
+            "SCAN_NOT_COMPLETE",
+            "NO_OFFICIAL_DENOMINATOR",
+            "RECONCILIATION_NOT_ZERO_TOLERANCE"
+          ],
+          "scan_status": "PARTIAL_MAX_ROWS",
+          "counters": {
+            "records_read": 2001,
+            "records_accepted": 2000,
+            "records_rejected": 0,
+            "records_invalid": 0,
+            "records_truncated": 1
+          },
+          "duplicate_keys_tracked": 2000,
+          "duplicate_scan_complete": true,
+          "scan_error": null
+        },
+        {
+          "member": "votacao_candidato_munzona_2022_TO.csv",
+          "class": "PARTIAL",
+          "authorized": false,
+          "blockers": [
+            "LAYOUT_NOT_OFFICIALLY_VALIDATED",
+            "SCAN_NOT_COMPLETE",
+            "NO_OFFICIAL_DENOMINATOR",
+            "RECONCILIATION_NOT_ZERO_TOLERANCE"
+          ],
+          "scan_status": "PARTIAL_MAX_ROWS",
+          "counters": {
+            "records_read": 2001,
+            "records_accepted": 2000,
+            "records_rejected": 0,
+            "records_invalid": 0,
+            "records_truncated": 1
+          },
+          "duplicate_keys_tracked": 2000,
+          "duplicate_scan_complete": true,
+          "scan_error": null
+        }
+      ]
+    }
+  ]
+}
